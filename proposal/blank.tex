@@ -28,7 +28,7 @@
 
     \section{Introduction}
 
-    Memcached~\cite{} is an extremely simple and useful caching system for web applications. It is implemented
+    Memcached~\cite{memcached} is an extremely simple and useful caching system for web applications. It is implemented
     via a distributed hash table stored in a RAM of a group of servers.
     Servers do not talk to each other and it is
     a client who decide, where to send a request.
@@ -43,7 +43,7 @@
 
     We propose the following design for the distributed caching system.
 
-    First, we use Chord~\cite{} to implement a DHT.
+    First, we use Chord~\cite{chord} to implement a DHT.
     As a result, Get/Put operation can take a superconstant time. In order to avoid this, we cache on a client 
     side the mapping from key ranges to the servers that hold them. As a result, if nothing fails, we have a
     constant query time. On the other hand, if servers fail from time to time,
@@ -57,4 +57,8 @@
     that is queried by clients $99.9\%$ of the time. Then the corresponding server is likely to fail. If it fails
     in the traditional architecture, then, while this machine is dead, the database will suffer from a huge
     number of queries. Meanwhile, in the proposed architecture, this query will soon be served by another machine.
+    
+\bibliographystyle{abbrv}
+\bibliography{biblio}
+
 \end{document}
