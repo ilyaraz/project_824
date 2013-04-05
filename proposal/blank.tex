@@ -1,0 +1,60 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{fullpage}
+\usepackage[utf8]{inputenc}
+\usepackage[pagebackref=true]{hyperref}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{newclude}
+
+\usepackage{palatino,eulervm}
+\linespread{1.05}         % Palatino needs more leading (space between lines)
+\usepackage[T1]{fontenc}
+
+\newcommand{\Rbb}{\mathbb{R}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\set}[1]{\left\{#1\right\}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+    \title{A Robust Version of Memcached}
+    \author{Gautam Kamath \and Ilya Razenshteyn}
+    \maketitle
+
+    \section{Introduction}
+
+    Memcached~\cite{} is an extremely simple and useful caching system for web applications. It is implemented
+    via a distributed hash table stored in a RAM of a group of servers.
+    Servers do not talk to each other and it is
+    a client who decide, where to send a request.
+
+    Memcached is not fault--tolerant and if a server fails clients experience cache misses. Moreover, if a server
+    dies permanently, a part of the cache is lost forever.
+
+    While these limitations are perfectly fine for practice we feel that it might be interesting
+    to try to address them.
+
+    \section{Proposal}
+
+    We propose the following design for the distributed caching system.
+
+    First, we use Chord~\cite{} to implement a DHT.
+    As a result, Get/Put operation can take a superconstant time. In order to avoid this, we cache on a client 
+    side the mapping from key ranges to the servers that hold them. As a result, if nothing fails, we have a
+    constant query time. On the other hand, if servers fail from time to time,
+    we do not have to care about management of a view service, or anything like this.
+
+    Second, we propose to implement fault--tolerance for the caching system. Every key--value pair is stored in
+    several locations (they are determined using a cryptographic hash function) and if a server fails its data
+    gets redistributed on other machines.
+
+    In the following scenario such a scheme might give a significant improvement. Suppose that there is a query
+    that is queried by clients $99.9\%$ of the time. Then the corresponding server is likely to fail. If it fails
+    in the traditional architecture, then, while this machine is dead, the database will suffer from a huge
+    number of queries. Meanwhile, in the proposed architecture, this query will soon be served by another machine.
+\end{document}
