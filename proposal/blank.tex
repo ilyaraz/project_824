@@ -29,35 +29,33 @@
     \section{Introduction}
 
     Memcached~\cite{memcached} is an extremely simple and useful caching system for web applications. It is implemented
-    via a distributed hash table stored in a RAM of a group of servers.
-    Servers do not talk to each other and it is
-    a client who decide, where to send a request.
+    via a distributed hash table stored in the RAM of a group of servers.
+    There is no communication between servers, and clients decide which servers need to be queried during a request.
 
-    Memcached is not fault--tolerant and if a server fails clients experience cache misses. Moreover, if a server
-    dies permanently, a part of the cache is lost forever.
+    Memcached is not fault--tolerant.
+    If a server fails, clients will experience cache misses. 
+    Moreover, if a server dies permanently, a part of the cache is lost forever.
 
-    While these limitations are perfectly fine for practice we feel that it might be interesting
-    to try to address them.
+    While these limitations are acceptable in practice, we are interested in addressing them.
 
     \section{Proposal}
 
-    We propose the following design for the distributed caching system.
+    We propose the following design for a distributed caching system.
 
     First, we use Chord~\cite{chord} to implement a DHT.
-    As a result, Get/Put operation can take a superconstant time. In order to avoid this, we cache on a client 
-    side the mapping from key ranges to the servers that hold them. As a result, if nothing fails, we have a
-    constant query time. On the other hand, if servers fail from time to time,
-    we do not have to care about management of a view service, or anything like this.
+    As a result, Get/Put operations can take a superconstant time. To avoid this, the client caches
+    a mapping from key ranges to the servers which hold them. As a result, if nothing fails, we have a
+    constant query time. On the other hand, Chord will handle server failures, without the need for a view service.
 
     Second, we propose to implement fault--tolerance for the caching system. Every key--value pair is stored in
-    several locations (they are determined using a cryptographic hash function) and if a server fails its data
-    gets redistributed on other machines.
+    several locations (determined using a cryptographic hash function).
+    If a server fails, its data will be redistributed on other machines.
 
-    In the following scenario such a scheme might give a significant improvement. Suppose that there is a query
-    that is queried by clients $99.9\%$ of the time. Then the corresponding server is likely to fail. If it fails
-    in the traditional architecture, then, while this machine is dead, the database will suffer from a huge
-    number of queries. Meanwhile, in the proposed architecture, this query will soon be served by another machine.
-    
+    We motivate this scheme with the following example: suppose all clients repeatedly perform the exact same query.
+    The resulting load on the corresponding server greatly increases its failure likelihood.
+    If the server fails, the database will receive a large amount of traffic.
+    In our proposed architecture, the queries will soon be served by another machine, thus removing unnecessary strain on the database.
+
 \bibliographystyle{abbrv}
 \bibliography{biblio}
 
