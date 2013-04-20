@@ -20,6 +20,10 @@ public:
 	void put(PutReply& _return, const PutArgs& query) {
 		data[query.key] = query.value;
 		_return.status = Status::OK;
+
+        if (data.size() % 10000 == 0) {
+            std::cout << data.size() << " entries" << std::endl;
+        }
 	}
 
 	void get(GetReply& _return, const GetArgs& query) {
