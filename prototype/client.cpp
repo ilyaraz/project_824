@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
                 if (cacheClient.get(key)) {
                 }
             }
-            catch (...) {
+            catch (std::runtime_error &e) {
                 ++numFailedGets;
             }
         }
