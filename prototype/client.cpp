@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 			client.get(reply, args);
 		}
 		else {
-			std::string value(1, '0' + (rand() % 10));
+			std::string value(10240, '0' + (rand() % 10));
 			PutArgs args;
 			args.key = key;
 			args.value = value;
