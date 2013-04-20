@@ -48,18 +48,10 @@ private:
 class CacheClient {
 public:
     CacheClient(const std::string &view_server, const int &view_port) {
-		shared_ptr<TSocket> socket(new TSocket(view_server, view_port));
-		shared_ptr<TTransport> transport(new TBufferedTransport(socket));
-		shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
-
-		ViewServiceClient client(protocol);
-		transport->open();
+        ServerConnection<ViewServiceClient> connection(view_server, view_port);
         GetServersReply reply;
-        client.getView(reply);
-        transport->close();
-
+        connection.getClient()->getView(reply);
         servers = reply.servers;
-
         std::cout << servers.size() << " servers in charge" << std::endl;
     }
 
@@ -112,7 +104,7 @@ int main(int argc, char **argv) {
     ptime t1(microsec_clock::local_time());
     for (;;) {
         std::string key;
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 7; ++i) {
             key += '0' + (rand() % 10);
         }
         if (rand() % 2) {

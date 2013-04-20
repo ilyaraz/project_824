@@ -1,6 +1,6 @@
 #include <ViewService.h>
 #include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/server/TSimpleServer.h>
+#include <thrift/server/TNonblockingServer.h>
 #include <thrift/transport/TServerSocket.h>
 #include <thrift/transport/TBufferTransports.h>
 
@@ -42,11 +42,9 @@ int main(int argc, char **argv) {
   std::cout << servers.size() << " servers loaded" << std::endl;
   shared_ptr<ViewServiceHandler> handler(new ViewServiceHandler(servers));
   shared_ptr<TProcessor> processor(new ViewServiceProcessor(handler));
-  shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
-  shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
   shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
 
-  TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
+  TNonblockingServer server(processor, protocolFactory, port);
   server.serve();
   return 0;
 }
