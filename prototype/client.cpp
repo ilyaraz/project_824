@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <stdexcept>
 
+#include <unistd.h>
+
 using namespace boost::posix_time;
 
 class CacheClient {
@@ -76,7 +78,7 @@ private:
 
 int main(int argc, char **argv) {
 
-    srand(0xdead);
+    srand(getpid());
 
 	std::string server = argv[1];
 	int port = atoi(argv[2]);
