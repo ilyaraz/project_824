@@ -1,9 +1,7 @@
+#include "ServerConnection.h"
+
 #include <KVStorage.h>
 #include <ViewService.h>
-
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TBufferTransports.h>
-#include <thrift/protocol/TBinaryProtocol.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
@@ -13,38 +11,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-using namespace apache::thrift;
-using namespace apache::thrift::protocol;
-using namespace apache::thrift::transport;
-
-using boost::shared_ptr;
-
 using namespace boost::posix_time;
-
-template<typename T> class ServerConnection {
-public:
-    ServerConnection(const std::string &server, const int &port) {
-        socket = shared_ptr<TSocket>(new TSocket(server, port));
-        transport = shared_ptr<TTransport>(new TFramedTransport(socket));
-        protocol = shared_ptr<TProtocol>(new TBinaryProtocol(transport));
-
-        client = shared_ptr<T>(new T(protocol));
-        transport->open();
-    }
-
-    ~ServerConnection() {
-        transport->close();
-    }
-
-    shared_ptr<T> getClient() const {
-        return client; 
-    }
-private:
-    shared_ptr<TSocket> socket;
-    shared_ptr<TTransport> transport;
-    shared_ptr<TProtocol> protocol;
-    shared_ptr<T> client;
-};
 
 class CacheClient {
 public:
@@ -147,11 +114,6 @@ int main(int argc, char **argv) {
             }
         }
         ++cnt;
-        if (cnt % 1000 == 0) {
-            ptime t2(microsec_clock::local_time());
-            double x = (t2 - t1).total_milliseconds();
-            std::cout << cnt << " " << x / cnt << " " << numFailedPuts << " " << numFailedGets << std::endl; 
-        }
     }
 	return 0;
 }

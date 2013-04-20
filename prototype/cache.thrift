@@ -30,11 +30,20 @@ struct GetServersReply {
 	1: list<Server> servers
 }
 
+struct GetStatisticsReply {
+    1: i64 numInsertions
+    2: i64 numUpdates
+    3: i64 numGoodGets
+    4: i64 numFailedGets
+}
+
 service KVStorage {
 	PutReply put(1: PutArgs query),
-	GetReply get(1: GetArgs query)
+	GetReply get(1: GetArgs query),
+    GetStatisticsReply getStatistics()
 }
 
 service ViewService {
-	GetServersReply getView()
+	GetServersReply getView(),
+    GetStatisticsReply getStatistics()
 }

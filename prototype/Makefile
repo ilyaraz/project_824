@@ -7,19 +7,22 @@ CPP_COMPILER = g++
 
 .PHONY: all clean
 
-all: server client view
+all: server client view monitor
 
 server: server.cpp gen-cpp
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-client: client.cpp gen-cpp
+client: client.cpp gen-cpp ServerConnection.h
 	${CPP_COMPILER} client.cpp ${GENERATED_SOURCES} -o client ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-view: view.cpp gen-cpp
+view: view.cpp gen-cpp ServerConnection.h
 	${CPP_COMPILER} view.cpp ${GENERATED_SOURCES} -o view ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
+
+monitor: monitor.cpp gen-cpp ServerConnection.h
+	${CPP_COMPILER} monitor.cpp ${GENERATED_SOURCES} -o monitor ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
 gen-cpp: cache.thrift
 	thrift-0.9.0/compiler/cpp/thrift -gen cpp cache.thrift
 
 clean:
-	rm -rf gen-cpp server client view
+	rm -rf gen-cpp server client view monitor

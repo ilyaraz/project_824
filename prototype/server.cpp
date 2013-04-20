@@ -18,6 +18,12 @@ public:
 	KVStorageHandler() {}
 
 	void put(PutReply& _return, const PutArgs& query) {
+        if (data.count(query.key)) {
+            ++statistics.numUpdates;
+        }
+        else {
+            ++statistics.numInsertions;
+        }
 		data[query.key] = query.value;
 		_return.status = Status::OK;
 	}
@@ -26,14 +32,21 @@ public:
 		if (data.count(query.key)) {
 			_return.status = Status::OK;
 			_return.value = data[query.key];
+            ++statistics.numGoodGets;
 		}
 		else {
 			_return.status = Status::NO_KEY;
+            ++statistics.numFailedGets;
 		}
 	}
 
+    void getStatistics(GetStatisticsReply& _return) {
+        _return = statistics;
+    }
+
 private:
 	std::map<std::string, std::string> data;
+    GetStatisticsReply statistics;
 };
 
 int main(int argc, char **argv) {
