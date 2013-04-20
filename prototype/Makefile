@@ -2,7 +2,7 @@ GENERATED_SOURCES = ./gen-cpp/ViewService.cpp ./gen-cpp/KVStorage.cpp ./gen-cpp/
 COMPILER_FLAGS = -O3 -Wall
 INCLUDE_DIRS = -I./gen-cpp -I./thrift-0.9.0/lib/cpp/src
 INCLUDE_INJECTIONS = -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H
-LIB_DIRS = -L./thrift-0.9.0/lib/cpp/.libs -lthrift
+LIB_DIRS = -L./thrift-0.9.0/lib/cpp/.libs -lthrift -lthriftnb -levent
 CPP_COMPILER = g++
 
 .PHONY: all clean

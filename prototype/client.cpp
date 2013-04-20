@@ -20,6 +20,31 @@ using boost::shared_ptr;
 
 using namespace boost::posix_time;
 
+template<typename T> class ServerConnection {
+public:
+    ServerConnection(const std::string &server, const int &port) {
+        socket = shared_ptr<TSocket>(new TSocket(server, port));
+        transport = shared_ptr<TTransport>(new TFramedTransport(socket));
+        protocol = shared_ptr<TProtocol>(new TBinaryProtocol(transport));
+
+        client = shared_ptr<T>(new T(protocol));
+        transport->open();
+    }
+
+    ~ServerConnection() {
+        transport->close();
+    }
+
+    shared_ptr<T> getClient() const {
+        return client; 
+    }
+private:
+    shared_ptr<TSocket> socket;
+    shared_ptr<TTransport> transport;
+    shared_ptr<TProtocol> protocol;
+    shared_ptr<T> client;
+};
+
 class CacheClient {
 public:
     CacheClient(const std::string &view_server, const int &view_port) {
@@ -40,17 +65,11 @@ public:
 
     boost::optional<std::string> get(const std::string &key) {
         int serverID = getServerID(key);
-		shared_ptr<TSocket> socket(new TSocket(servers[serverID].server, servers[serverID].port));
-		shared_ptr<TTransport> transport(new TBufferedTransport(socket));
-		shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
-
-		KVStorageClient client(protocol);
-        transport->open();
+        ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
         GetArgs args;
         args.key = key;
         GetReply reply;
-        client.get(reply, args);
-        transport->close();
+        connection.getClient()->get(reply, args);
 
         if (reply.status == Status::OK) {
             return boost::optional<std::string>(reply.value);
@@ -60,18 +79,12 @@ public:
 
     void put(const std::string &key, const std::string &value) {
         int serverID = getServerID(key);
-		shared_ptr<TSocket> socket(new TSocket(servers[serverID].server, servers[serverID].port));
-		shared_ptr<TTransport> transport(new TBufferedTransport(socket));
-		shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
-
-		KVStorageClient client(protocol);
-        transport->open();
+        ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
         PutArgs args;
         args.key = key;
         args.value = value;
         PutReply reply;
-        client.put(reply, args);
-        transport->close();
+        connection.getClient()->put(reply, args);
     }
 private:
     std::vector<Server> servers;
