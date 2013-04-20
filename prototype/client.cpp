@@ -37,7 +37,11 @@ int main(int argc, char **argv) {
 		KVServerClient client(protocol);
 		transport->open();
 
-		std::string key(1, '0' + (rand() % 10));
+		std::string key;
+
+		for (int i = 0; i < 50; ++i) {
+			key += '0' + (rand() % 10);
+		}
 
 		if (rand() % 2) {
 			GetArgs args;
