@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
 			ptime t2(microsec_clock::local_time());
 			double x = (t2 - t1).total_milliseconds();
 			std::cout << cnt << " " << x / cnt << std::endl;
+			t1 = t2;
 		}
 	}
 
