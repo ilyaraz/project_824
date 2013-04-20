@@ -1,4 +1,4 @@
-GENERATED_SOURCES = ./gen-cpp/KVServer.cpp ./gen-cpp/kvserver_types.cpp ./gen-cpp/kvserver_constants.cpp
+GENERATED_SOURCES = ./gen-cpp/ViewService.cpp ./gen-cpp/KVStorage.cpp ./gen-cpp/cache_types.cpp ./gen-cpp/cache_constants.cpp
 COMPILER_FLAGS = -O3 -Wall
 INCLUDE_DIRS = -I./gen-cpp -I./thrift-0.9.0/lib/cpp/src
 INCLUDE_INJECTIONS = -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H
@@ -7,7 +7,7 @@ CPP_COMPILER = g++
 
 .PHONY: all clean
 
-all: server client
+all: server client view
 
 server: server.cpp gen-cpp
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
@@ -15,8 +15,11 @@ server: server.cpp gen-cpp
 client: client.cpp gen-cpp
 	${CPP_COMPILER} client.cpp ${GENERATED_SOURCES} -o client ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-gen-cpp: kvserver.thrift
-	thrift-0.9.0/compiler/cpp/thrift -gen cpp kvserver.thrift
+view: view.cpp gen-cpp
+	${CPP_COMPILER} view.cpp ${GENERATED_SOURCES} -o view ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
+
+gen-cpp: cache.thrift
+	thrift-0.9.0/compiler/cpp/thrift -gen cpp cache.thrift
 
 clean:
-	rm -rf gen-cpp server client
+	rm -rf gen-cpp server client view

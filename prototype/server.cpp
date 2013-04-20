@@ -1,4 +1,4 @@
-#include <KVServer.h>
+#include <KVStorage.h>
 
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/server/TSimpleServer.h>
@@ -12,9 +12,9 @@ using namespace apache::thrift::server;
 
 using boost::shared_ptr;
 
-class KVServerHandler: virtual public KVServerIf {
+class KVStorageHandler: virtual public KVStorageIf {
 public:
-	KVServerHandler() {}
+	KVStorageHandler() {}
 
 	void put(PutReply& _return, const PutArgs& query) {
 		data[query.key] = query.value;
@@ -38,8 +38,8 @@ private:
 int main(int argc, char **argv) {
 	int port = atoi(argv[1]);
 
-	shared_ptr<KVServerHandler> handler(new KVServerHandler());
-	shared_ptr<TProcessor> processor(new KVServerProcessor(handler));
+	shared_ptr<KVStorageHandler> handler(new KVStorageHandler());
+	shared_ptr<TProcessor> processor(new KVStorageProcessor(handler));
 	shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
 	shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
 	shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());

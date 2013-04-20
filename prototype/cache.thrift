@@ -21,7 +21,20 @@ struct GetReply {
 	2: string value
 }
 
-service KVServer {
+struct Server {
+	1: string server,
+	2: i32 port
+}
+
+struct GetServersReply {
+	1: list<Server> servers
+}
+
+service KVStorage {
 	PutReply put(1: PutArgs query),
 	GetReply get(1: GetArgs query)
+}
+
+service ViewService {
+	GetServersReply getView()
 }
