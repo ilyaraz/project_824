@@ -95,6 +95,8 @@ int main(int argc, char **argv) {
 
     CacheClient cacheClient(server, port);
 
+    int cnt = 0;
+    ptime t1(microsec_clock::local_time());
     for (;;) {
         std::string key;
         for (int i = 0; i < 6; ++i) {
@@ -109,8 +111,13 @@ int main(int argc, char **argv) {
         }
         else {
             if (cacheClient.get(key)) {
-                std::cout << key << std::endl;
             }
+        }
+        ++cnt;
+        if (cnt % 1000 == 0) {
+            ptime t2(microsec_clock::local_time());
+            double x = (t2 - t1).total_milliseconds();
+            std::cout << cnt << " " << x / cnt << std::endl; 
         }
     }
 	return 0;
