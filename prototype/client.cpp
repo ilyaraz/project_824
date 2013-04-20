@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <stdexcept>
 
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
@@ -48,35 +49,50 @@ private:
 class CacheClient {
 public:
     CacheClient(const std::string &view_server, const int &view_port) {
-        ServerConnection<ViewServiceClient> connection(view_server, view_port);
-        GetServersReply reply;
-        connection.getClient()->getView(reply);
-        servers = reply.servers;
-        std::cout << servers.size() << " servers in charge" << std::endl;
+        try {
+            ServerConnection<ViewServiceClient> connection(view_server, view_port);
+            GetServersReply reply;
+            connection.getClient()->getView(reply);
+            servers = reply.servers;
+            std::cout << servers.size() << " servers in charge" << std::endl;
+        }
+        catch (...) {
+            throw std::runtime_error("filed to query view server");
+        }
     }
 
     boost::optional<std::string> get(const std::string &key) {
-        int serverID = getServerID(key);
-        ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
-        GetArgs args;
-        args.key = key;
-        GetReply reply;
-        connection.getClient()->get(reply, args);
+        try {
+            int serverID = getServerID(key);
+            ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
+            GetArgs args;
+            args.key = key;
+            GetReply reply;
+            connection.getClient()->get(reply, args);
 
-        if (reply.status == Status::OK) {
-            return boost::optional<std::string>(reply.value);
+            if (reply.status == Status::OK) {
+                return boost::optional<std::string>(reply.value);
+            }
+            return boost::optional<std::string>();
         }
-        return boost::optional<std::string>();
+        catch (...) {
+            throw std::runtime_error("get() failed");
+        }
     }
 
     void put(const std::string &key, const std::string &value) {
-        int serverID = getServerID(key);
-        ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
-        PutArgs args;
-        args.key = key;
-        args.value = value;
-        PutReply reply;
-        connection.getClient()->put(reply, args);
+        try {
+            int serverID = getServerID(key);
+            ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
+            PutArgs args;
+            args.key = key;
+            args.value = value;
+            PutReply reply;
+            connection.getClient()->put(reply, args);
+        }
+        catch (...) {
+            throw std::runtime_error("put() failed");
+        }
     }
 private:
     std::vector<Server> servers;
@@ -101,6 +117,8 @@ int main(int argc, char **argv) {
     CacheClient cacheClient(server, port);
 
     int cnt = 0;
+    int numFailedPuts = 0;
+    int numFailedGets = 0;
     ptime t1(microsec_clock::local_time());
     for (;;) {
         std::string key;
@@ -112,17 +130,27 @@ int main(int argc, char **argv) {
             for (int i = 0; i < 10240; i++) {
                 value += '0' + (rand() % 10);
             }
-            cacheClient.put(key, value);
+            try {
+                cacheClient.put(key, value);
+            }
+            catch (std::runtime_error &e) {
+                ++numFailedPuts;
+            }
         }
         else {
-            if (cacheClient.get(key)) {
+            try {
+                if (cacheClient.get(key)) {
+                }
+            }
+            catch (...) {
+                ++numFailedGets;
             }
         }
         ++cnt;
         if (cnt % 1000 == 0) {
             ptime t2(microsec_clock::local_time());
             double x = (t2 - t1).total_milliseconds();
-            std::cout << cnt << " " << x / cnt << std::endl; 
+            std::cout << cnt << " " << x / cnt << " " << numFailedPuts << " " << numFailedGets << std::endl; 
         }
     }
 	return 0;
