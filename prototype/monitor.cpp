@@ -10,6 +10,9 @@ void printStatistics(const GetStatisticsReply &statistics) {
     std::cout << "updates: " << statistics.numUpdates << std::endl;
     std::cout << "retrieves: " << statistics.numGoodGets << std::endl;
     std::cout << "misses: " << statistics.numFailedGets << std::endl;
+    std::cout << "data size: " << statistics.dataSize << std::endl;
+    std::cout << "hash tables sizes: " << statistics.memoryOverhead << std::endl;
+    std::cout << "evictions: " << statistics.numEvictions << std::endl;
     std::cout << std::endl;
 }
 

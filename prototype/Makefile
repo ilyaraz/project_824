@@ -7,13 +7,16 @@ CPP_COMPILER = g++
 
 .PHONY: all clean
 
-all: server client view monitor
+all: server stress view monitor console
 
 server: server.cpp gen-cpp
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-client: client.cpp gen-cpp ServerConnection.h
-	${CPP_COMPILER} client.cpp ${GENERATED_SOURCES} -o client ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
+stress: stress.cpp gen-cpp ServerConnection.h client.h
+	${CPP_COMPILER} stress.cpp ${GENERATED_SOURCES} -o stress ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
+
+console: console.cpp gen-cpp ServerConnection.h client.h
+	${CPP_COMPILER} console.cpp ${GENERATED_SOURCES} -o console ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
 view: view.cpp gen-cpp ServerConnection.h
 	${CPP_COMPILER} view.cpp ${GENERATED_SOURCES} -o view ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
@@ -25,4 +28,4 @@ gen-cpp: cache.thrift
 	thrift-0.9.0/compiler/cpp/thrift -gen cpp cache.thrift
 
 clean:
-	rm -rf gen-cpp server client view monitor
+	rm -rf gen-cpp server stress view monitor console

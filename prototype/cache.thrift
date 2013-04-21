@@ -35,6 +35,9 @@ struct GetStatisticsReply {
     2: i64 numUpdates
     3: i64 numGoodGets
     4: i64 numFailedGets
+    5: i64 dataSize
+    6: i64 memoryOverhead
+    7: i64 numEvictions
 }
 
 service KVStorage {

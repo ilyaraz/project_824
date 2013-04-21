@@ -2,5 +2,6 @@
 
 killall server
 killall view
-killall client
+killall stress
 killall monitor
+killall console
