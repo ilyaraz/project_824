@@ -43,6 +43,9 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       result.numUpdates = a.numUpdates + b.numUpdates;
       result.numGoodGets = a.numGoodGets + b.numGoodGets;
       result.numFailedGets = a.numFailedGets + b.numFailedGets;
+      result.dataSize = a.dataSize + b.dataSize;
+      result.memoryOverhead = a.memoryOverhead + b.memoryOverhead;
+      result.numEvictions = a.numEvictions + b.numEvictions;
       return result;
   }
 
