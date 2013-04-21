@@ -28,7 +28,7 @@ struct Record {
 
 const double LOAD_FACTOR = 0.5;
 const double GROWTH_FACTOR = 2.0;
-const int MEMORY_LIMIT = 1 << 25;
+const int MEMORY_LIMIT = 1 << 30;
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
