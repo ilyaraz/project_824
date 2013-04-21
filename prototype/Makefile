@@ -7,7 +7,7 @@ CPP_COMPILER = g++
 
 .PHONY: all clean
 
-all: server stress view monitor console
+all: server stress view monitor console gen-py
 
 server: server.cpp gen-cpp
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
@@ -31,4 +31,4 @@ gen-py: cache.thrift
 	thrift-0.9.0/compiler/cpp/thrift -gen py cache.thrift
 
 clean:
-	rm -rf gen-cpp server stress view monitor console
+	rm -rf gen-cpp server stress view monitor console gen-py
