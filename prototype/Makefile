@@ -27,7 +27,7 @@ monitor: monitor.cpp gen-cpp ServerConnection.h
 gen-cpp: cache.thrift
 	thrift-0.9.0/compiler/cpp/thrift -gen cpp cache.thrift
 
-gen-cpp: cache.thrift
+gen-py: cache.thrift
 	thrift-0.9.0/compiler/cpp/thrift -gen py cache.thrift
 
 clean:
