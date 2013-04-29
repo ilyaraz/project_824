@@ -1,0 +1,70 @@
+<project name="cache" default="cache" basedir=".">
+
+
+  <property name="src" location="src" />
+  <property name="gen" location="gen-java" />
+  <property name="build" location="build" />
+
+  <path id="libs.classpath">
+    <fileset dir="thrift-0.9.0/lib/java/build">
+      <include name="*.jar" />
+      <exclude name="-test.jar" />
+    </fileset>
+    <fileset dir="thrift-0.9.0/lib/java/build/lib">
+      <include name="*.jar" />
+    </fileset>
+  </path>
+  <path id="build.classpath">
+    <path refid="libs.classpath" />
+    <pathelement path="${gen}" />
+  </path>
+  <path id="cache.classpath">
+    <path refid="build.classpath" />
+    <pathelement path="${build}" />
+    <pathelement path="cache.jar" />
+  </path>
+  
+  <target name="init">
+    <tstamp />
+    <mkdir dir="${build}"/>
+    <mkdir dir="${build}/log"/>
+  </target>
+
+  <target name="compile" depends="init, generate">
+    <javac srcdir="${gen}" destdir="${build}" classpathref="libs.classpath" />
+    <javac srcdir="${src}" destdir="${build}" classpathref="build.classpath" />
+  </target>
+
+  <target name="test" depends="cache" />
+
+  <target name="cache" depends="compile">
+    <jar jarfile="cache.jar" basedir="${build}"/>
+      <java classname="JavaClient"
+        classpathref="cache.classpath" failonerror="true">
+        <arg value="127.0.0.1"/>
+        <arg value="4057"/>
+      </java>
+  </target>
+
+  <target name="generate">
+    <!-- Generate the thrift gen-java source -->
+    <exec executable="thrift-0.9.0/compiler/cpp/thrift" failonerror="true">
+      <arg line="--gen java -r  cache.thrift"/>
+    </exec>
+  </target>
+
+  <target name="cacheclient" depends="compile">
+    <java classname="JavaClient"
+      classpathref="cache.classpath" failonerror="true">
+      <arg value="127.0.0.1"/>
+      <arg value="4057"/>
+    </java>
+  </target>
+
+  <target name="clean">
+    <delete dir="${build}" />
+    <delete dir="${gen}"/>
+    <delete file="cache.jar" />
+  </target>
+
+</project>
