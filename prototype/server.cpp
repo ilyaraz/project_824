@@ -166,7 +166,7 @@ private:
     }
 
     void normalizeTable() {
-        std::cout << numEntries << " " << numDeadEntries << " " << hashTable.size() << std::endl;
+        //std::cout << numEntries << " " << numDeadEntries << " " << hashTable.size() << std::endl;
         while (getUsedMemory() > MEMORY_LIMIT) {
             evictEntry();
         }
