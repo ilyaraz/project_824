@@ -122,7 +122,7 @@ private:
 
     void rehash(size_t newSize) {
         std::vector<Record> newTable(newSize);
-        //std::cout << "rehash from " << hashTable.size() << " to " << newTable.size() << std::endl;
+        std::cout << "rehash from " << hashTable.size() << " to " << newTable.size() << std::endl;
         int newListHead = -1, newListTail = -1;
         for (int i = listHead; i != -1; i = hashTable[i].next) {
             //std::cout << "rehashing " << i << std::endl;
