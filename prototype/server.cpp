@@ -15,24 +15,31 @@ using namespace apache::thrift::server;
 
 using boost::shared_ptr;
 
+enum State {
+    EMPTY,
+    ALIVE,
+    DEAD
+};
+
 struct Record {
-    bool alive;
+    State state; // 0 -- empty, 1 -- alive, 2 -- dead
     std::string key;
     std::string value;
     int prev;
     int next;
 
-    Record(): alive(false), prev(-1), next(-1) {
+    Record(): state(EMPTY), prev(-1), next(-1) {
     }
 };
 
-const double LOAD_FACTOR = 0.5;
+const double LOAD_FACTOR1 = 0.25;
+const double LOAD_FACTOR2 = 0.5;
 const double GROWTH_FACTOR = 2.0;
 const int MEMORY_LIMIT = 1 << 30;
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
-	KVStorageHandler(): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0) {
+	KVStorageHandler(): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0) {
     }
 
 	void put(PutReply& _return, const PutArgs& query) {
@@ -40,7 +47,7 @@ public:
         normalizeTable();
         //debug();
         int pos = getPosition(query.key);
-        if (hashTable[pos].alive) {
+        if (hashTable[pos].state == ALIVE) {
             totalKeyValueSize -= hashTable[pos].value.size();
             hashTable[pos].value = query.value;
             totalKeyValueSize += hashTable[pos].value.size();
@@ -58,7 +65,7 @@ public:
 	void get(GetReply& _return, const GetArgs& query) {
         //debug();
         int pos = getPosition(query.key);
-        if (hashTable[pos].alive) {
+        if (hashTable[pos].state == ALIVE) {
             _return.status = Status::OK;
             _return.value = hashTable[pos].value;
             ++statistics.numGoodGets;
@@ -84,6 +91,7 @@ private:
     int listTail;
     int totalKeyValueSize;
     int numEntries;
+    int numDeadEntries;
 
     void debug() {
         std::cout << getUsedMemory() << std::endl;
@@ -96,8 +104,8 @@ private:
     int getPosition(const std::string &key) {
         unsigned int pos = hash(key) % hashTable.size();
         for (;;) {
-            if (!hashTable[pos].alive) return pos;
-            if (hashTable[pos].key == key) return pos;
+            if (hashTable[pos].state == EMPTY) return pos;
+            if (hashTable[pos].state == ALIVE && hashTable[pos].key == key) return pos;
             pos++;
             if (pos >= hashTable.size()) pos = 0;
         }
@@ -112,19 +120,19 @@ private:
         return result;
     }
 
-    void rehash() {
-        std::vector<Record> newTable(hashTable.size() * GROWTH_FACTOR);
-        std::cout << "rehash from " << hashTable.size() << " to " << newTable.size() << std::endl;
+    void rehash(size_t newSize) {
+        std::vector<Record> newTable(newSize);
+        //std::cout << "rehash from " << hashTable.size() << " to " << newTable.size() << std::endl;
         int newListHead = -1, newListTail = -1;
         for (int i = listHead; i != -1; i = hashTable[i].next) {
             //std::cout << "rehashing " << i << std::endl;
             unsigned int pos = hash(hashTable[i].key) % newTable.size();
             for (;;) {
-                if (!newTable[pos].alive) break;
+                if (newTable[pos].state == EMPTY) break;
                 pos++;
                 if (pos >= newTable.size()) pos = 0;
             }
-            newTable[pos].alive = true;
+            newTable[pos].state = ALIVE;
             newTable[pos].key.swap(hashTable[i].key);
             newTable[pos].value.swap(hashTable[i].value);
             newTable[pos].prev = newListTail;
@@ -140,6 +148,7 @@ private:
         hashTable.swap(newTable);
         std::swap(listHead, newListHead);
         std::swap(listTail, newListTail);
+        numDeadEntries = 0;
     }
 
     void evictEntry() {
@@ -150,21 +159,27 @@ private:
         totalKeyValueSize -= hashTable[pos].key.size() + hashTable[pos].value.size();
         Record emptyRecord;
         std::swap(hashTable[pos], emptyRecord);
+        hashTable[pos].state = DEAD;
         numEntries--;
+        numDeadEntries++;
         ++statistics.numEvictions;
     }
 
     void normalizeTable() {
+        std::cout << numEntries << " " << numDeadEntries << " " << hashTable.size() << std::endl;
         while (getUsedMemory() > MEMORY_LIMIT) {
             evictEntry();
         }
-        if (numEntries > LOAD_FACTOR * hashTable.size()) {
-            rehash();
+        if (numEntries > LOAD_FACTOR1 * hashTable.size()) {
+            rehash(hashTable.size() * GROWTH_FACTOR);
+        }
+        if (numEntries + numDeadEntries > LOAD_FACTOR2 * hashTable.size()) {
+            rehash(hashTable.size());
         }
     }
 
     void removeFromList(int pos) {
-        assert(hashTable[pos].alive);
+        assert(hashTable[pos].state == ALIVE);
         if (hashTable[pos].prev != -1) {
             hashTable[hashTable[pos].prev].next = hashTable[pos].next;
         }
@@ -180,7 +195,7 @@ private:
     }
 
     void addToFront(int pos) {
-        assert(hashTable[pos].alive);
+        assert(hashTable[pos].state == ALIVE);
         hashTable[pos].prev = -1;
         hashTable[pos].next = listHead;
 
@@ -196,15 +211,15 @@ private:
     }
 
     void accessEntry(int pos) {
-        assert(hashTable[pos].alive);
+        assert(hashTable[pos].state == ALIVE);
         removeFromList(pos);
         addToFront(pos);
     }
 
     void addEntry(int pos, const std::string &key, const std::string &value) {
-        assert(!hashTable[pos].alive);
+        assert(hashTable[pos].state == EMPTY);
 
-        hashTable[pos].alive = true;
+        hashTable[pos].state = ALIVE;
         totalKeyValueSize += key.size() + value.size();
         hashTable[pos].key = key;
         hashTable[pos].value = value;
