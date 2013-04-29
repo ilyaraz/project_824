@@ -13,21 +13,34 @@ from thrift.transport import TSocket
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 
+class ServerConnection:
+  def __init__(self, server, port):
+    socket = TSocket.TSocket(server, port)
+    self.transport = TTransport.TFramedTransport(socket)
+    self.transport.open()
+    self.protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
+
+  def getProtocol(self):
+    return self.protocol
+
+  def close(self):
+    self.transport.close()
+
 class CacheClient:
   def __init__(self, server, port):
-#    try:
-    client = ViewService.Client(CacheClient.getProtocol(server, port))
+    connection = ServerConnection(server, port)
+    client = ViewService.Client(connection.getProtocol())
     self.servers = client.getView().servers
-    print str(len(servers)) + " servers in charge\n"
-#    except:
-#      raise Exception('Failed to query view server')
-      
+    connection.close()
+    print str(len(self.servers)) + " servers in charge\n"
 
   def get(self, key):
     try:
       serverID = self.getServerID(key)
-      client = KVStorageClient.Client(getProtocol(self.servers[serverID].server, self.servers[serverID].port))
+      connection = ServerConnection(self.servers[serverID].server, self.servers[serverID].port)
+      client = KVStorageClient.Client(connection.getProtocol())
       reply = client.get(GetArgs(key))
+      connection.close()
       if (reply.status == Status.OK):
         return reply.value
       return ""
@@ -37,8 +50,11 @@ class CacheClient:
   def put(self, key, val):
     try:
       serverID = self.getServerID(key)
-      client = KVStorageClient.Client(getProtocol(self.servers[serverID].server, self.servers[serverID].port))
+      connection = ServerConnection(self.servers[serverID].server, self.servers[serverID].port)
+      client = KVStorageClient.Client(connection.getProtocol())
       reply = client.put(PutArgs(key, val))
+      connection.close()
+      print "Put " + key + " " + value
     except: 
       raise Exception('Put failed')
 
@@ -48,13 +64,6 @@ class CacheClient:
       result ^= int(c)
       result += (result << 1) + (result << 4) + (result << 7) + (result << 8) + (result << 24)
     return result % len(self.servers)
-
-  @staticmethod
-  def getProtocol(server, port):
-    transport = TSocket.TSocket(server, port)
-    transport = TTransport.TFramedTransport(transport)
-    return TBinaryProtocol.TBinaryProtocol(transport)
-
 
 def main(args):
   random.seed()
@@ -71,7 +80,7 @@ def main(args):
     key = str(random.getrandbits(32))
     cacheClient.getServerID(key)
     if (bool(random.getrandbits(1))):
-      value = str(random.getrandbits(65536))
+      value = str(random.getrandbits(64))
       try:
         cacheClient.put(key, value)
       except:
