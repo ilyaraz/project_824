@@ -8,21 +8,41 @@
 #include <thrift/transport/TBufferTransports.h>
 
 #include <fstream>
+#include <mutex>
+#include <boost/thread.hpp>
 
 class ViewServiceHandler : virtual public ViewServiceIf {
  public:
-  ViewServiceHandler(const std::vector<Server> &servers): servers(servers) {
+  ViewServiceHandler(const std::vector<Server> &servers) {
+    viewMutex.lock();
+    viewNum = 0;
+    views.push_back(servers);
+    viewMutex.unlock();
+
+    pingsMutex.lock();
+    for (size_t i = 0; i < servers.size(); ++i) {
+      pings[servers[i]] = time(NULL);
+    }
+    pingsMutex.unlock();
+
+    std::cout << "Starting checkPings thread" << std::endl;
+    boost::thread(checkPings);
   }
 
   void getView(GetServersReply& _return) {
-    _return.servers = servers;
+    viewMutex.lock();
+    _return.servers = views[viewNum];
+    viewMutex.unlock();
   }
 
   void getStatistics(GetStatisticsReply& _return) {
       GetStatisticsReply result;
-      for (size_t i = 0; i < servers.size(); ++i) {
+      viewMutex.lock();
+      std::vector<Server> view = views[viewNum];
+      viewMutex.unlock();
+      for (size_t i = 0; i < view.size(); ++i) {
           try {
-              ServerConnection<KVStorageClient> connection(servers[i].server, servers[i].port);
+              ServerConnection<KVStorageClient> connection(view[i].server, view[i].port);
               GetStatisticsReply local;
               connection.getClient()->getStatistics(local);
               result = aggregateStatistics(result, local);
@@ -34,8 +54,39 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       _return = result;
   }
 
+  struct ltstr {
+    bool operator()(const Server s1, const Server s2) const {
+      return s1.server.compare(s2.server) == -1 || (s1.server.compare(s2.server) == 0 && s1.port < s2.port);
+    }
+  };
+
+  void addServer(const Server& s) {
+    pingsMutex.lock();
+    pings[s] = time(NULL);
+    pingsMutex.unlock();
+
+    viewMutex.lock();
+    std::vector<Server> newView = std::vector<Server>(views[viewNum]);
+    newView.push_back(s);
+    views.push_back(newView);
+    viewNum++;
+    viewMutex.unlock();
+  }
+
+  void receivePing(const Server& s) {
+    pingsMutex.lock();
+    if (pings.find(s) != pings.end()) {
+      pings[s] = time(NULL);
+    }
+    pingsMutex.unlock();
+  }
+
  private:
-  std::vector<Server> servers;
+  int viewNum;
+  std::vector<std::vector<Server> > views;
+  std::mutex viewMutex;
+  std::map<Server, time_t, ltstr> pings;
+  std::mutex pingsMutex;
 
   GetStatisticsReply aggregateStatistics(const GetStatisticsReply &a, const GetStatisticsReply &b) {
       GetStatisticsReply result;
@@ -49,6 +100,40 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       return result;
   }
 
+  void checkPings() {
+    std::cout << "Entered checkPings" << std::endl;
+    while (true) {
+      boost::this_thread::sleep(boost::posix_time::seconds(5));
+
+      //Check if any servers are unresponsive
+      std::vector<Server> toRemove = std::vector<Server>();
+      std::map<Server, time_t>::iterator iter;
+      pingsMutex.lock();
+      for (iter = pings.begin(); iter != pings.end(); ++iter) {
+        std::cout << "Ping time is " << iter->second << std::endl;
+        if (iter->second < time(NULL) - 5) {
+          toRemove.push_back(iter->first);
+          pings.erase(iter->first);
+        }
+      }
+      pingsMutex.unlock();
+
+      //If any servers are unresponsive, create a new view
+      if (toRemove.empty()) {
+        viewMutex.lock();
+        std::vector<Server> newView = std::vector<Server>();
+        std::vector<Server> oldView = views[viewNum];
+        for (size_t i = 0; i < oldView.size(); ++i) {
+          if (std::find(toRemove.begin(), toRemove.end(), oldView[i]) == toRemove.end()) {
+            newView.push_back(oldView[i]);
+          }
+        }
+        views.push_back(newView);
+        viewNum++;
+        viewMutex.unlock();
+      }
+    }
+  }
 };
 
 int main(int argc, char **argv) {

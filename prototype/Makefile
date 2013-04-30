@@ -1,13 +1,13 @@
 GENERATED_SOURCES = ./gen-cpp/ViewService.cpp ./gen-cpp/KVStorage.cpp ./gen-cpp/cache_types.cpp ./gen-cpp/cache_constants.cpp
-COMPILER_FLAGS = -O3 -Wall
+COMPILER_FLAGS = -O3 -Wall -std=c++0x
 INCLUDE_DIRS = -I./gen-cpp -I./thrift-0.9.0/lib/cpp/src
 INCLUDE_INJECTIONS = -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H
-LIB_DIRS = -L./thrift-0.9.0/lib/cpp/.libs -lthrift -lthriftnb -levent
+LIB_DIRS = -L./thrift-0.9.0/lib/cpp/.libs -lthrift -lthriftnb -levent -L/usr/local/lib -lboost_thread
 CPP_COMPILER = g++
 
 .PHONY: all clean
 
-all: server stress view monitor console gen-py gen-java
+all: gen-cpp server stress view monitor console gen-py gen-java
 
 server: server.cpp gen-cpp
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}

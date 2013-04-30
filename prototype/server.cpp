@@ -1,4 +1,7 @@
+#include "ServerConnection.h"
+
 #include <KVStorage.h>
+#include <ViewService.h>
 
 #include <cassert>
 
@@ -7,6 +10,8 @@
 #include <thrift/server/TNonblockingServer.h>
 #include <thrift/transport/TServerSocket.h>
 #include <thrift/transport/TTransportUtils.h>
+
+#include <boost/thread.hpp>
 
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
@@ -39,8 +44,21 @@ const int MEMORY_LIMIT = 1 << 30;
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
-	KVStorageHandler(): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0) {
-    }
+	KVStorageHandler(const std::string &address, const int &port, const std::string &vsAddress, const int &vsPort): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0) {
+          server = new Server();
+          server->server = address;
+          server->port = port;
+          connection = new ServerConnection<ViewServiceClient>(vsAddress, vsPort);
+          client = connection->getClient();
+          boost::thread(pingViewService);
+        }
+
+        void pingViewService() {
+          while (true) {
+            boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+            client->receivePing(*server);
+          }
+        }
 
 	void put(PutReply& _return, const PutArgs& query) {
         //debug();
@@ -92,6 +110,10 @@ private:
     int totalKeyValueSize;
     int numEntries;
     int numDeadEntries;
+    Server* server;
+    //Do we need to keep this connection to close later?
+    ServerConnection<ViewServiceClient>* connection;
+    boost::shared_ptr<ViewServiceClient> client;
 
     void debug() {
         std::cout << getUsedMemory() << std::endl;
@@ -235,9 +257,12 @@ private:
 };
 
 int main(int argc, char **argv) {
-	int port = atoi(argv[1]);
+        std::string address = argv[1];
+	int port = atoi(argv[2]);
+        std::string vsAddress = argv[3];
+        int vsPort = atoi(argv[4]);
 
-	shared_ptr<KVStorageHandler> handler(new KVStorageHandler());
+	shared_ptr<KVStorageHandler> handler(new KVStorageHandler(address, port, vsAddress, vsPort));
 	shared_ptr<TProcessor> processor(new KVStorageProcessor(handler));
 	//shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
 	//shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());

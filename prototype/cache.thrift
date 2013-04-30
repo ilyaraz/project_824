@@ -49,6 +49,8 @@ service KVStorage {
 }
 
 service ViewService {
+        void addServer(1: Server s),
+        void receivePing(1: Server s),
 	GetServersReply getView(),
     GetStatisticsReply getStatistics()
 }

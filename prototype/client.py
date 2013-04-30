@@ -32,7 +32,7 @@ class CacheClient:
     client = ViewService.Client(connection.getProtocol())
     self.servers = client.getView().servers
     connection.close()
-    print str(len(self.servers)) + " servers in charge"
+    #print str(len(self.servers)) + " servers in charge"
 
   def get(self, key):
     try:
@@ -42,9 +42,9 @@ class CacheClient:
       reply = client.get(GetArgs(key))
       connection.close()
       if (reply.status == Status.OK):
-        print "Got " + key + " " + reply.value
+        #print "Got " + key + " " + reply.value
         return reply.value
-      print "Got " + key + " Nothing"
+      #print "Got " + key + " Nothing"
       return ""
     except: 
       raise Exception('Get failed')
@@ -56,7 +56,7 @@ class CacheClient:
       client = KVStorage.Client(connection.getProtocol())
       reply = client.put(PutArgs(key, val))
       connection.close()
-      print "Put " + key + " " + val
+      #print "Put " + key + " " + val
     except: 
       raise Exception('Put failed')
 
