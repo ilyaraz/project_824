@@ -25,8 +25,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     }
     pingsMutex.unlock();
 
-    std::cout << "Starting checkPings thread" << std::endl;
-    boost::thread(checkPings);
+    boost::thread t1(boost::bind(&ViewServiceHandler::checkPings, this));
   }
 
   void getView(GetServersReply& _return) {
@@ -101,7 +100,6 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   }
 
   void checkPings() {
-    std::cout << "Entered checkPings" << std::endl;
     while (true) {
       boost::this_thread::sleep(boost::posix_time::seconds(5));
 
@@ -110,7 +108,6 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       std::map<Server, time_t>::iterator iter;
       pingsMutex.lock();
       for (iter = pings.begin(); iter != pings.end(); ++iter) {
-        std::cout << "Ping time is " << iter->second << std::endl;
         if (iter->second < time(NULL) - 5) {
           toRemove.push_back(iter->first);
           pings.erase(iter->first);
