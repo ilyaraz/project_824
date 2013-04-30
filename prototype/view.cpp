@@ -13,17 +13,11 @@
 
 class ViewServiceHandler : virtual public ViewServiceIf {
  public:
-  ViewServiceHandler(const std::vector<Server> &servers) {
+  ViewServiceHandler() {
     viewMutex.lock();
     viewNum = 0;
-    views.push_back(servers);
+    views.push_back(std::vector<Server>());
     viewMutex.unlock();
-
-    pingsMutex.lock();
-    for (size_t i = 0; i < servers.size(); ++i) {
-      pings[servers[i]] = time(NULL);
-    }
-    pingsMutex.unlock();
 
     boost::thread t1(boost::bind(&ViewServiceHandler::checkPings, this));
   }
@@ -69,6 +63,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     newView.push_back(s);
     views.push_back(newView);
     viewNum++;
+    std::cout << "Incrementing viewnum to " << viewNum << std::endl;
     viewMutex.unlock();
   }
 
@@ -102,6 +97,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   void checkPings() {
     while (true) {
       boost::this_thread::sleep(boost::posix_time::seconds(5));
+      std::cout << "Current viewnumber is " << viewNum << std::endl;
 
       //Check if any servers are unresponsive
       std::vector<Server> toRemove = std::vector<Server>();
@@ -116,7 +112,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       pingsMutex.unlock();
 
       //If any servers are unresponsive, create a new view
-      if (toRemove.empty()) {
+      if (!toRemove.empty()) {
         viewMutex.lock();
         std::vector<Server> newView = std::vector<Server>();
         std::vector<Server> oldView = views[viewNum];
@@ -135,18 +131,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
 int main(int argc, char **argv) {
   int port = atoi(argv[1]);
-  std::ifstream input(argv[2]);
-  std::vector<Server> servers;
-  std::string ss;
-  int pp;
-  while (input >> ss >> pp) {
-      Server s;
-      s.server = ss;
-      s.port = pp;
-      servers.push_back(s);
-  }
-  std::cout << servers.size() << " servers loaded" << std::endl;
-  shared_ptr<ViewServiceHandler> handler(new ViewServiceHandler(servers));
+  shared_ptr<ViewServiceHandler> handler(new ViewServiceHandler());
   shared_ptr<apache::thrift::TProcessor> processor(new ViewServiceProcessor(handler));
   shared_ptr<apache::thrift::protocol::TProtocolFactory> protocolFactory(new apache::thrift::protocol::TBinaryProtocolFactory());
 

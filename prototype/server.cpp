@@ -50,6 +50,7 @@ public:
           server->port = port;
           connection = new ServerConnection<ViewServiceClient>(vsAddress, vsPort);
           client = connection->getClient();
+          client->addServer(*server);
           boost::thread t1(boost::bind(&KVStorageHandler::pingViewService, this));
         }
 
