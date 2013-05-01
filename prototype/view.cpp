@@ -13,6 +13,9 @@
 #include <boost/thread.hpp>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/random/mersenne_twister.hpp>
+
+#include <unistd.h>
 
 const int WAIT_CHECK_TIME = 500;
 const int DEAD_TIME = 500;
@@ -20,21 +23,20 @@ const int DEAD_TIME = 500;
 class ViewServiceHandler : virtual public ViewServiceIf {
  public:
   ViewServiceHandler() {
+    gen.seed(getpid());
     viewMutex.lock();
     viewNum = 0;
     views.push_back(std::vector<Server>());
+    hashToServer.push_back(std::map<int, Server>());
     viewMutex.unlock();
 
     boost::thread t1(boost::bind(&ViewServiceHandler::checkPings, this));
+
   }
 
   void getView(GetServersReply& _return) {
     viewMutex.lock();
-    std::map<int, Server> servers;
-    for (size_t i = 0; i < views[viewNum].size(); ++i) {
-        servers[::hash(views[viewNum][i])] = views[viewNum][i];
-    }
-    _return.view.hashToServer = servers;
+    _return.view.hashToServer = hashToServer[viewNum];
     _return.viewNum = viewNum;
     viewMutex.unlock();
   }
@@ -73,6 +75,9 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     std::vector<Server> newView = std::vector<Server>(views[viewNum]);
     newView.push_back(s);
     views.push_back(newView);
+    std::map<int, Server> newHash(hashToServer[viewNum]);
+    newHash[gen()] = s; 
+    hashToServer.push_back(newHash);
     viewNum++;
     std::cout << "Incrementing viewnum to " << viewNum << std::endl;
     viewMutex.unlock();
@@ -91,9 +96,11 @@ class ViewServiceHandler : virtual public ViewServiceIf {
  private:
   int viewNum;
   std::vector<std::vector<Server> > views;
+  std::vector<std::map<int, Server> > hashToServer;
   std::mutex viewMutex;
   std::map<Server, boost::posix_time::ptime, ltstr> pings;
   std::mutex pingsMutex;
+  boost::random::mt19937 gen;
 
   GetStatisticsReply aggregateStatistics(const GetStatisticsReply &a, const GetStatisticsReply &b) {
       GetStatisticsReply result;
@@ -114,9 +121,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       viewMutex.lock();
       std::cout << "Current viewnumber is " << viewNum << std::endl;
       viewMutex.unlock();
-      GetServersReply reply;
-      getView(reply);
-      for (std::map<int, Server>::iterator it = reply.view.hashToServer.begin(); it != reply.view.hashToServer.end(); it++) {
+      for (std::map<int, Server>::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); it++) {
           std::cout << it->first << " " << it->second.server << " " << it->second.port << " " << pings[it->second] << std::endl;
       }
 
@@ -138,11 +143,18 @@ class ViewServiceHandler : virtual public ViewServiceIf {
         viewMutex.lock();
         std::vector<Server> newView = std::vector<Server>();
         std::vector<Server> oldView = views[viewNum];
+        std::map<int, Server> newHash;
         for (size_t i = 0; i < oldView.size(); ++i) {
           if (std::find(toRemove.begin(), toRemove.end(), oldView[i]) == toRemove.end()) {
             newView.push_back(oldView[i]);
           }
         }
+        for (std::map<int, Server>::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); ++it) {
+          if (std::find(toRemove.begin(), toRemove.end(), it->second) == toRemove.end()) {
+              newHash[it->first] = it->second;
+          }
+        }
+        hashToServer.push_back(newHash);
         views.push_back(newView);
         viewNum++;
         viewMutex.unlock();
