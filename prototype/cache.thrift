@@ -1,4 +1,3 @@
-namespace java cache
 
 struct PutArgs {
 	1: string key,

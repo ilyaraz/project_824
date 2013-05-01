@@ -1,4 +1,5 @@
 #include "ServerConnection.h"
+#include "ConsistentHashing.h"
 
 #include <KVStorage.h>
 #include <ViewService.h>
@@ -44,24 +45,27 @@ const int MEMORY_LIMIT = 1 << 30;
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
-	KVStorageHandler(const std::string &address, const int &port, const std::string &vsAddress, const int &vsPort): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0) {
-          server = new Server();
-          server->server = address;
-          server->port = port;
-          connection = new ServerConnection<ViewServiceClient>(vsAddress, vsPort);
-          client = connection->getClient();
-          client->addServer(*server);
+	KVStorageHandler(const std::string &address, const int &port, const std::string &vsAddress, const int &vsPort): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0), vsAddress(vsAddress), vsPort(vsPort) {
+          server.server = address;
+          server.port = port;
+          ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
+          vsConnection.getClient()->addServer(server);
           boost::thread t1(boost::bind(&KVStorageHandler::pingViewService, this));
         }
 
         void pingViewService() {
           while (true) {
             boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-            client->receivePing(*server);
+            ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
+            vsConnection.getClient()->receivePing(currentView, server);
           }
         }
 
 	void put(PutReply& _return, const PutArgs& query) {
+        if (!checkServer(query.viewNum, query.key)) {
+            _return.status = Status::WRONG_SERVER;
+            return;
+        }
         //debug();
         normalizeTable();
         //debug();
@@ -82,6 +86,10 @@ public:
 	}
 
 	void get(GetReply& _return, const GetArgs& query) {
+        if (!checkServer(query.viewNum, query.key)) {
+            _return.status = Status::WRONG_SERVER;
+            return;
+        }
         //debug();
         int pos = getPosition(query.key);
         if (hashTable[pos].state == ALIVE) {
@@ -111,10 +119,18 @@ private:
     int totalKeyValueSize;
     int numEntries;
     int numDeadEntries;
-    Server* server;
-    //Do we need to keep this connection to close later?
-    ServerConnection<ViewServiceClient>* connection;
-    boost::shared_ptr<ViewServiceClient> client;
+    Server server;
+    GetServersReply currentView;
+    std::string vsAddress;
+    int vsPort;
+
+    bool checkServer(int viewNum, const std::string &key) {
+        if (viewNum != currentView.viewNum) {
+            return false;
+        }
+        Server supposedServer = getServer(::hash(key), currentView.view);
+        return supposedServer.server == server.server && supposedServer.port == server.port;
+    }
 
     void debug() {
         std::cout << getUsedMemory() << std::endl;

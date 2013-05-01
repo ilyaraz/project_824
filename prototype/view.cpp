@@ -24,7 +24,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
   void getView(GetServersReply& _return) {
     viewMutex.lock();
-    _return.servers = views[viewNum];
+    _return.view.servers = views[viewNum];
     viewMutex.unlock();
   }
 
@@ -67,12 +67,16 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     viewMutex.unlock();
   }
 
-  void receivePing(const Server& s) {
+  void receivePing(GetServersReply& _return, const Server& s) {
     pingsMutex.lock();
     if (pings.find(s) != pings.end()) {
       pings[s] = time(NULL);
     }
     pingsMutex.unlock();
+    viewMutex.lock();
+    _return.view = views[viewNum];
+    _return.viewNum = viewNum;
+    viewMutex.unlock();
   }
 
  private:
