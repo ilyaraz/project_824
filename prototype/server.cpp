@@ -60,7 +60,11 @@ public:
             boost::this_thread::sleep(boost::posix_time::milliseconds(PING_INTERVAL));
             try {
                 ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
-                vsConnection.getClient()->receivePing(currentView, server);
+                GetServersReply _currentView;
+                vsConnection.getClient()->receivePing(_currentView, server);
+                currentViewMutex.lock();
+                currentView = _currentView;
+                currentViewMutex.unlock();
             }
             catch (...) {
             }
@@ -127,21 +131,28 @@ private:
     int numDeadEntries;
     Server server;
     GetServersReply currentView;
+    std::mutex currentViewMutex;
     std::string vsAddress;
     int vsPort;
 
     bool checkServer(int viewNum, const std::string &key) {
-        if (viewNum < currentView.viewNum) {
+        currentViewMutex.lock();
+        GetServersReply _currentView = currentView;
+        currentViewMutex.unlock();
+        if (viewNum < _currentView.viewNum) {
             return false;
         }
-        if (viewNum > currentView.viewNum) {
+        if (viewNum > _currentView.viewNum) {
             ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
-            vsConnection.getClient()->receivePing(currentView, server);
-            if (viewNum != currentView.viewNum) {
+            vsConnection.getClient()->receivePing(_currentView, server);
+            currentViewMutex.lock();
+            currentView = _currentView;
+            currentViewMutex.unlock();
+            if (viewNum != _currentView.viewNum) {
                 return false;
             }
         }
-        Server supposedServer = getServer(::hash(key), currentView.view);
+        Server supposedServer = getServer(::hash(key), _currentView.view);
         return supposedServer.server == server.server && supposedServer.port == server.port;
     }
 
