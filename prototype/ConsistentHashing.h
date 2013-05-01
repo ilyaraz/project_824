@@ -20,12 +20,6 @@ int hash(const std::string &key) {
     return result;
 }
 
-int hash(const Server &server) {
-    std::ostringstream oss;
-    oss << server.server << ":" << server.port << "random enough salt";
-    return hash(oss.str());
-}
-
 Server getServer(int hash, const View& v) {
     if (v.hashToServer.empty()) {
         throw EmptyRingException("empty ring");
