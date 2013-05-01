@@ -77,6 +77,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   }
 
   void receivePing(GetServersReply& _return, const Server& s) {
+    std::cout << "received ping from " << s.server << ":" << s.port << std::endl;
     pingsMutex.lock();
     if (pings.find(s) != pings.end()) {
         pings[s] = boost::posix_time::microsec_clock::local_time();
