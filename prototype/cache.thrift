@@ -2,16 +2,19 @@ namespace java cache
 
 struct PutArgs {
 	1: string key,
-	2: string value
+	2: string value,
+        3: i32 viewNum
 }
 
 struct GetArgs {
-	1: string key
+	1: string key,
+        2: i32 viewNum
 }
 
 enum Status {
 	OK = 1,
-	NO_KEY = 2
+	NO_KEY = 2,
+        WRONG_SERVER = 3
 }
 
 struct PutReply {
@@ -28,15 +31,17 @@ struct Server {
 	2: i32 port
 }
 
-struct GetServersReply {
-	1: list<Server> servers
-}
-
 struct View {
   1: map<string, Server> hashToServer,
-  2: list<Server> serverToHash,
+  2: list<Server> servers,
   3: list<string> sortedHashes
 }
+
+struct GetServersReply {
+	1: View view, 
+        2: i32 viewNum
+}
+
 
 struct GetStatisticsReply {
     1: i64 numInsertions
@@ -56,7 +61,7 @@ service KVStorage {
 
 service ViewService {
         void addServer(1: Server s),
-        void receivePing(1: Server s),
+        GetServersReply receivePing(1: Server s),
 	GetServersReply getView(),
     GetStatisticsReply getStatistics()
 }
