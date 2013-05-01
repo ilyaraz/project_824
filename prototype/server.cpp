@@ -58,8 +58,12 @@ public:
         void pingViewService() {
           while (true) {
             boost::this_thread::sleep(boost::posix_time::milliseconds(PING_INTERVAL));
-            ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
-            vsConnection.getClient()->receivePing(currentView, server);
+            try {
+                ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
+                vsConnection.getClient()->receivePing(currentView, server);
+            }
+            catch (...) {
+            }
           }
         }
 
