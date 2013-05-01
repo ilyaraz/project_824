@@ -32,9 +32,8 @@ struct Server {
 }
 
 struct View {
-  1: map<string, Server> hashToServer,
-  2: list<Server> servers,
-  3: list<string> sortedHashes
+  1: map<i32, Server> hashToServer,
+  2: list<Server> servers
 }
 
 struct GetServersReply {

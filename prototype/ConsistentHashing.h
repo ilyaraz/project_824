@@ -1,24 +1,23 @@
 #include <stdio.h>
 #include <string.h>
-#include <openssl/md5.h>
 #include "cache_types.h"
+#include <cassert>
 
-std::string hash(std::string msg) {
-  unsigned char digest[MD5_DIGEST_LENGTH];
-  char digest_str[2*MD5_DIGEST_LENGTH];
-  std::string result;
-  MD5((const unsigned char*) msg.c_str(), msg.length(), digest);
-  for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-    sprintf(digest_str, "%02x", digest[i]);
-    result.append(digest_str);
-  }
-  std::cout << result << std::endl;
-  return result;
+int hash(const std::string &key) {
+    unsigned int result = 0;
+    size_t s = key.size();
+    for (size_t i = 0; i < s; ++i) {
+        result ^= (unsigned int) key[i];
+        result += (result << 1) + (result << 4) + (result << 7) + (result << 8) + (result << 24);
+    }
+    return result;
 }
 
-void getServer(Server& _return, std::string hash, const View& v) {
-  std::vector<std::string> sortedHashes = v.sortedHashes;
-  int index = std::lower_bound(sortedHashes.begin(), sortedHashes.end(), hash) - sortedHashes.begin();
-  std::map<std::string, Server> hashToServer = v.hashToServer;
-  _return = hashToServer[sortedHashes[index]];
+Server getServer(int hash, const View& v) {
+    assert(!v.hashToServer.empty());
+    std::map<int, Server>::iterator it = v.hashToServer.lower_bound(hash);
+    if (it == v.hashToServer.end()) {
+        return *v.hashToServer.begin();
+    }
+    return *it;
 }
