@@ -111,6 +111,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       result.dataSize = a.dataSize + b.dataSize;
       result.memoryOverhead = a.memoryOverhead + b.memoryOverhead;
       result.numEvictions = a.numEvictions + b.numEvictions;
+      result.numPurges = a.numPurges + b.numPurges;
       return result;
   }
 

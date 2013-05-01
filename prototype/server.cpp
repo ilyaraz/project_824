@@ -63,8 +63,15 @@ public:
                 GetServersReply _currentView;
                 vsConnection.getClient()->receivePing(_currentView, server);
                 currentViewMutex.lock();
+                bool needToClean = false;
+                if (currentView.viewNum != _currentView.viewNum) {
+                    needToClean = true;
+                }
                 currentView = _currentView;
                 currentViewMutex.unlock();
+                if (needToClean) {
+                    cleanHash();
+                }
             }
             catch (...) {
             }
@@ -76,6 +83,7 @@ public:
             _return.status = Status::WRONG_SERVER;
             return;
         }
+        hashMutex.lock();
         //debug();
         normalizeTable();
         //debug();
@@ -92,6 +100,7 @@ public:
             addEntry(pos, query.key, query.value);
         }
 		_return.status = Status::OK;
+        hashMutex.unlock();
         //debug();
 	}
 
@@ -101,6 +110,7 @@ public:
             return;
         }
         //debug();
+        hashMutex.lock();
         int pos = getPosition(query.key);
         if (hashTable[pos].state == ALIVE) {
             _return.status = Status::OK;
@@ -112,6 +122,7 @@ public:
             _return.status = Status::NO_KEY;
             ++statistics.numFailedGets;
         }
+        hashMutex.unlock();
         //debug();
 	}
 
@@ -134,6 +145,20 @@ private:
     std::mutex currentViewMutex;
     std::string vsAddress;
     int vsPort;
+    std::mutex hashMutex;
+
+    void cleanHash() {
+        hashMutex.lock();
+        for (int pos = listHead; pos != -1; pos = hashTable[pos].next) {
+            Server supposedServer = getServer(::hash(hashTable[pos].key), currentView.view);
+            if (supposedServer.server == server.server && supposedServer.port == server.port) {
+                continue;
+            }
+            removeEntry(pos);
+            ++statistics.numPurges;
+        }
+        hashMutex.unlock();
+    }
 
     bool checkServer(int viewNum, const std::string &key) {
         currentViewMutex.lock();
@@ -146,8 +171,15 @@ private:
             ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
             vsConnection.getClient()->receivePing(_currentView, server);
             currentViewMutex.lock();
+            bool needToClean = false;
+            if (currentView.viewNum != _currentView.viewNum) {
+                needToClean = true;
+            }
             currentView = _currentView;
             currentViewMutex.unlock();
+            if (needToClean) {
+                cleanHash();
+            }
             if (viewNum != _currentView.viewNum) {
                 return false;
             }
@@ -214,10 +246,7 @@ private:
         numDeadEntries = 0;
     }
 
-    void evictEntry() {
-        assert(listTail != -1);
-        int pos = listTail;
-        //std::cout << "evicting " << hashTable[pos].key << " (load: " << (numEntries + 0.0) / (hashTable.size() + 0.0) << ")" << std::endl;
+    void removeEntry(int pos) {
         removeFromList(pos);
         totalKeyValueSize -= hashTable[pos].key.size() + hashTable[pos].value.size();
         Record emptyRecord;
@@ -225,6 +254,11 @@ private:
         hashTable[pos].state = DEAD;
         numEntries--;
         numDeadEntries++;
+    }
+
+    void evictEntry() {
+        assert(listTail != -1);
+        removeEntry(listTail);
         ++statistics.numEvictions;
     }
 

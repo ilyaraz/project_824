@@ -41,13 +41,14 @@ struct GetServersReply {
 
 
 struct GetStatisticsReply {
-    1: i64 numInsertions
-    2: i64 numUpdates
-    3: i64 numGoodGets
-    4: i64 numFailedGets
-    5: i64 dataSize
-    6: i64 memoryOverhead
-    7: i64 numEvictions
+    1: i64 numInsertions,
+    2: i64 numUpdates,
+    3: i64 numGoodGets,
+    4: i64 numFailedGets,
+    5: i64 dataSize,
+    6: i64 memoryOverhead,
+    7: i64 numEvictions,
+    8: i64 numPurges
 }
 
 service KVStorage {
