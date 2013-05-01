@@ -14,7 +14,11 @@ int main(int argc, char **argv) {
 	std::string server = argv[1];
 	int port = atoi(argv[2]);
 
-    CacheClient cacheClient(server, port);
+    Server viewServer;
+    viewServer.server = server;
+    viewServer.port = port;
+
+    CacheClient cacheClient(viewServer);
 
     int cnt = 0;
     int numFailedPuts = 0;

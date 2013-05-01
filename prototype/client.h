@@ -14,30 +14,26 @@
 
 class CacheClient {
 public:
-    CacheClient(const std::string &view_server, const int &view_port) {
-        try {
-            ServerConnection<ViewServiceClient> connection(view_server, view_port);
-            GetServersReply reply;
-            connection.getClient()->getView(reply);
-            servers = reply.servers;
-            std::cout << servers.size() << " servers in charge" << std::endl;
-        }
-        catch (...) {
-            throw std::runtime_error("filed to query view server");
-        }
+    CacheClient(const Server &viewServer): viewServer(viewServer) {
+        getView();
     }
 
     boost::optional<std::string> get(const std::string &key) {
         try {
             int serverID = getServerID(key);
-            ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
+            ServerConnection<KVStorageClient> connection(reply_.view.servers[serverID].server, reply_.view.servers[serverID].port);
             GetArgs args;
             args.key = key;
+            args.viewNum = reply_.viewNum;
             GetReply reply;
             connection.getClient()->get(reply, args);
 
             if (reply.status == Status::OK) {
                 return boost::optional<std::string>(reply.value);
+            }
+            else if (reply.status == Status::WRONG_SERVER) {
+                getView();
+                throw std::runtime_error("get(): wrong server");
             }
             return boost::optional<std::string>();
         }
@@ -49,26 +45,47 @@ public:
     void put(const std::string &key, const std::string &value) {
         try {
             int serverID = getServerID(key);
-            ServerConnection<KVStorageClient> connection(servers[serverID].server, servers[serverID].port);
+            ServerConnection<KVStorageClient> connection(reply_.view.servers[serverID].server, reply_.view.servers[serverID].port);
             PutArgs args;
             args.key = key;
             args.value = value;
+            args.viewNum = reply_.viewNum;
             PutReply reply;
             connection.getClient()->put(reply, args);
+
+            if (reply.status == Status::WRONG_SERVER) {
+                getView();
+                throw std::runtime_error("put(): wrong server");
+            }
         }
         catch (...) {
             throw std::runtime_error("put() failed");
         }
     }
 private:
-    std::vector<Server> servers;
+    GetServersReply reply_;
+    Server viewServer;
 
     int getServerID(const std::string &key) {
+        /*
         unsigned int result = 0;
         for (size_t i = 0; i < key.size(); ++i) {
             result ^= (unsigned int) key[i];
             result += (result << 1) + (result << 4) + (result << 7) + (result << 8) + (result << 24);
         }
         return result % servers.size();
+        */
+        return 0;
+    }
+
+    void getView() {
+        try {
+            ServerConnection<ViewServiceClient> connection(viewServer.server, viewServer.port);
+            connection.getClient()->getView(reply_);
+            std::cout << "view " << reply_.viewNum << " " << reply_.view.servers.size() << " servers in charge" << std::endl;
+        }
+        catch (...) {
+            throw std::runtime_error("failed to query view server");
+        }
     }
 };
