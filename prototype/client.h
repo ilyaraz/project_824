@@ -12,6 +12,21 @@
 #include <string>
 #include <iostream>
 
+class ViewServiceException: public std::runtime_error {
+public:
+    explicit ViewServiceException(const std::string &what): std::runtime_error(what) {}
+};
+
+class WrongServerException: public std::runtime_error {
+public:
+    explicit WrongServerException(const std::string &what): std::runtime_error(what) {}
+};
+
+class ConnectionFailedException: public std::runtime_error {
+public:
+    explicit ConnectionFailedException(const std::string &what): std::runtime_error(what) {}
+};
+
 class CacheClient {
 public:
     CacheClient(const Server &viewServer): viewServer(viewServer) {
@@ -33,12 +48,19 @@ public:
             }
             else if (reply.status == Status::WRONG_SERVER) {
                 getView();
-                throw std::runtime_error("get(): wrong server");
+                throw WrongServerException("wrong server"); 
             }
             return boost::optional<std::string>();
         }
+        catch (ViewServiceException &e) {
+            throw;
+        }
+        catch (WrongServerException &e) {
+            throw;
+        }
         catch (...) {
-            throw std::runtime_error("get() failed");
+            getView();
+            throw ConnectionFailedException("failed connection"); 
         }
     }
 
@@ -55,11 +77,18 @@ public:
 
             if (reply.status == Status::WRONG_SERVER) {
                 getView();
-                throw std::runtime_error("put(): wrong server");
+                throw WrongServerException("wrong server"); 
             }
         }
+        catch (ViewServiceException &e) {
+            throw;
+        }
+        catch (WrongServerException &e) {
+            throw;
+        }
         catch (...) {
-            throw std::runtime_error("put() failed");
+            getView();
+            throw ConnectionFailedException("failed connection"); 
         }
     }
 private:
@@ -77,7 +106,7 @@ private:
             std::cout << "view " << reply_.viewNum << " " << reply_.view.hashToServer.size() << " servers in charge" << std::endl;
         }
         catch (...) {
-            throw std::runtime_error("failed to query view server");
+            throw ViewServiceException("failed to query view service");
         }
     }
 };

@@ -12,6 +12,9 @@
 #include <mutex>
 #include <boost/thread.hpp>
 
+const int WAIT_CHECK_TIME = 500;
+const int DEAD_TIME = 500;
+
 class ViewServiceHandler : virtual public ViewServiceIf {
  public:
   ViewServiceHandler() {
@@ -104,7 +107,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   void checkPings() {
     while (true) {
         std::cout << "entering" << std::endl;
-      boost::this_thread::sleep(boost::posix_time::seconds(2));
+      boost::this_thread::sleep(boost::posix_time::milliseconds(WAIT_CHECK_TIME));
       viewMutex.lock();
       std::cout << "Current viewnumber is " << viewNum << std::endl;
       viewMutex.unlock();
@@ -120,7 +123,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       pingsMutex.lock();
       boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
       for (iter = pings.begin(); iter != pings.end(); ++iter) {
-        if (iter->second < now - boost::posix_time::seconds(2)) {
+        if (iter->second < now - boost::posix_time::milliseconds(DEAD_TIME)) {
           toRemove.push_back(iter->first);
           pings.erase(iter->first);
         }

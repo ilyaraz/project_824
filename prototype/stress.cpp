@@ -37,7 +37,9 @@ int main(int argc, char **argv) {
                 cacheClient.put(key, value);
             }
             catch (std::runtime_error &e) {
+                std::cout << e.what() << std::endl;
                 ++numFailedPuts;
+                std::cout << "put failure on key " << key << std::endl;
             }
         }
         else {
@@ -46,7 +48,9 @@ int main(int argc, char **argv) {
                 }
             }
             catch (std::runtime_error &e) {
+                std::cout << e.what() << std::endl;
                 ++numFailedGets;
+                std::cout << "get failure on key " << key << std::endl;
             }
         }
         ++cnt;

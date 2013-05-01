@@ -13,6 +13,7 @@
 #include <thrift/transport/TTransportUtils.h>
 
 #include <boost/thread.hpp>
+#include <mutex>
 
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
@@ -41,7 +42,8 @@ struct Record {
 const double LOAD_FACTOR1 = 0.25;
 const double LOAD_FACTOR2 = 0.5;
 const double GROWTH_FACTOR = 2.0;
-const int MEMORY_LIMIT = 1 << 30;
+const int MEMORY_LIMIT = 1 << 25;
+const int PING_INTERVAL = 100; // in milliseconds
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
@@ -55,7 +57,7 @@ public:
 
         void pingViewService() {
           while (true) {
-            boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+            boost::this_thread::sleep(boost::posix_time::milliseconds(PING_INTERVAL));
             ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
             vsConnection.getClient()->receivePing(currentView, server);
           }
@@ -125,8 +127,15 @@ private:
     int vsPort;
 
     bool checkServer(int viewNum, const std::string &key) {
-        if (viewNum != currentView.viewNum) {
+        if (viewNum < currentView.viewNum) {
             return false;
+        }
+        if (viewNum > currentView.viewNum) {
+            ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
+            vsConnection.getClient()->receivePing(currentView, server);
+            if (viewNum != currentView.viewNum) {
+                return false;
+            }
         }
         Server supposedServer = getServer(::hash(key), currentView.view);
         return supposedServer.server == server.server && supposedServer.port == server.port;
