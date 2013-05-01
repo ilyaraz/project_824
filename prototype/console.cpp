@@ -6,7 +6,10 @@
 int main(int argc, char **argv) {
     std::string server = argv[1];
     int port = atoi(argv[2]);
-    CacheClient client(server, port);
+    Server vs;
+    vs.server = server;
+    vs.port = port;
+    CacheClient client(vs);
     for (;;) {
         std::string cmd, key;
         std::cin >> cmd >> key;

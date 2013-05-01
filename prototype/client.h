@@ -74,7 +74,7 @@ private:
         try {
             ServerConnection<ViewServiceClient> connection(viewServer.server, viewServer.port);
             connection.getClient()->getView(reply_);
-            std::cout << "view " << reply_.viewNum << " " << reply_.view.servers.size() << " servers in charge" << std::endl;
+            std::cout << "view " << reply_.viewNum << " " << reply_.view.hashToServer.size() << " servers in charge" << std::endl;
         }
         catch (...) {
             throw std::runtime_error("failed to query view server");

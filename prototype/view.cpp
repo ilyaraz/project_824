@@ -1,4 +1,5 @@
 #include "ServerConnection.h"
+#include "ConsistentHashing.h"
 
 #include <KVStorage.h>
 #include <ViewService.h>
@@ -24,7 +25,12 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
   void getView(GetServersReply& _return) {
     viewMutex.lock();
-    _return.view.servers = views[viewNum];
+    std::map<int, Server> servers;
+    for (size_t i = 0; i < views[viewNum].size(); ++i) {
+        servers[::hash(views[viewNum][i])] = views[viewNum][i];
+    }
+    _return.view.hashToServer = servers;
+    _return.viewNum = viewNum;
     viewMutex.unlock();
   }
 
@@ -55,7 +61,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
   void addServer(const Server& s) {
     pingsMutex.lock();
-    pings[s] = time(NULL);
+    pings[s] = boost::posix_time::microsec_clock::local_time();
     pingsMutex.unlock();
 
     viewMutex.lock();
@@ -70,20 +76,17 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   void receivePing(GetServersReply& _return, const Server& s) {
     pingsMutex.lock();
     if (pings.find(s) != pings.end()) {
-      pings[s] = time(NULL);
+        pings[s] = boost::posix_time::microsec_clock::local_time();
     }
     pingsMutex.unlock();
-    viewMutex.lock();
-    _return.view = views[viewNum];
-    _return.viewNum = viewNum;
-    viewMutex.unlock();
+    getView(_return);
   }
 
  private:
   int viewNum;
   std::vector<std::vector<Server> > views;
   std::mutex viewMutex;
-  std::map<Server, time_t, ltstr> pings;
+  std::map<Server, boost::posix_time::ptime, ltstr> pings;
   std::mutex pingsMutex;
 
   GetStatisticsReply aggregateStatistics(const GetStatisticsReply &a, const GetStatisticsReply &b) {
@@ -100,15 +103,24 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
   void checkPings() {
     while (true) {
-      boost::this_thread::sleep(boost::posix_time::seconds(5));
+        std::cout << "entering" << std::endl;
+      boost::this_thread::sleep(boost::posix_time::seconds(2));
+      viewMutex.lock();
       std::cout << "Current viewnumber is " << viewNum << std::endl;
+      viewMutex.unlock();
+      GetServersReply reply;
+      getView(reply);
+      for (std::map<int, Server>::iterator it = reply.view.hashToServer.begin(); it != reply.view.hashToServer.end(); it++) {
+          std::cout << it->first << " " << it->second.server << " " << it->second.port << std::endl;
+      }
 
       //Check if any servers are unresponsive
       std::vector<Server> toRemove = std::vector<Server>();
-      std::map<Server, time_t>::iterator iter;
+      std::map<Server, boost::posix_time::ptime>::iterator iter;
       pingsMutex.lock();
+      boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
       for (iter = pings.begin(); iter != pings.end(); ++iter) {
-        if (iter->second < time(NULL) - 5) {
+        if (iter->second < now - boost::posix_time::seconds(2)) {
           toRemove.push_back(iter->first);
           pings.erase(iter->first);
         }

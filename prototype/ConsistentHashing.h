@@ -2,6 +2,7 @@
 #include <string.h>
 #include "cache_types.h"
 #include <cassert>
+#include <sstream>
 
 int hash(const std::string &key) {
     unsigned int result = 0;
@@ -11,6 +12,12 @@ int hash(const std::string &key) {
         result += (result << 1) + (result << 4) + (result << 7) + (result << 8) + (result << 24);
     }
     return result;
+}
+
+int hash(const Server &server) {
+    std::ostringstream oss;
+    oss << server.server << ":" << server.port << "random enough salt";
+    return hash(oss.str());
 }
 
 Server getServer(int hash, const View& v) {
