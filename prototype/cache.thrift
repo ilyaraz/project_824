@@ -32,6 +32,12 @@ struct GetServersReply {
 	1: list<Server> servers
 }
 
+struct View {
+  1: map<string, Server> hashToServer,
+  2: list<Server> serverToHash,
+  3: list<string> sortedHashes
+}
+
 struct GetStatisticsReply {
     1: i64 numInsertions
     2: i64 numUpdates

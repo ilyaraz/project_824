@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ServerConnection.h"
+#include "ConsistentHashing.h"
 
 #include <KVStorage.h>
 #include <ViewService.h>

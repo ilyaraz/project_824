@@ -9,19 +9,19 @@ CPP_COMPILER = g++
 
 all: gen-cpp server stress view monitor console gen-py gen-java
 
-server: server.cpp gen-cpp
+server: server.cpp gen-cpp ConsistentHashing.h
 	${CPP_COMPILER} server.cpp ${GENERATED_SOURCES} -o server ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-stress: stress.cpp gen-cpp ServerConnection.h client.h
+stress: stress.cpp gen-cpp ServerConnection.h client.h ConsistentHashing.h
 	${CPP_COMPILER} stress.cpp ${GENERATED_SOURCES} -o stress ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-console: console.cpp gen-cpp ServerConnection.h client.h
+console: console.cpp gen-cpp ServerConnection.h client.h ConsistentHashing.h
 	${CPP_COMPILER} console.cpp ${GENERATED_SOURCES} -o console ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-view: view.cpp gen-cpp ServerConnection.h
+view: view.cpp gen-cpp ServerConnection.h ConsistentHashing.h
 	${CPP_COMPILER} view.cpp ${GENERATED_SOURCES} -o view ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
-monitor: monitor.cpp gen-cpp ServerConnection.h
+monitor: monitor.cpp gen-cpp ServerConnection.h ConsistentHashing.h
 	${CPP_COMPILER} monitor.cpp ${GENERATED_SOURCES} -o monitor ${COMPILER_FLAGS} ${INCLUDE_DIRS} ${INCLUDE_INJECTIONS} ${LIB_DIRS}
 
 gen-cpp: cache.thrift
