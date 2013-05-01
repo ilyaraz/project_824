@@ -52,6 +52,10 @@ public:
             }
             return boost::optional<std::string>();
         }
+        catch (EmptyRingException &e) {
+            getView();
+            throw;
+        }
         catch (ViewServiceException &e) {
             throw;
         }
@@ -79,6 +83,10 @@ public:
                 getView();
                 throw WrongServerException("wrong server"); 
             }
+        }
+        catch (EmptyRingException &e) {
+            getView();
+            throw;
         }
         catch (ViewServiceException &e) {
             throw;

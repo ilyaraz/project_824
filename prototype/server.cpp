@@ -42,7 +42,7 @@ struct Record {
 const double LOAD_FACTOR1 = 0.25;
 const double LOAD_FACTOR2 = 0.5;
 const double GROWTH_FACTOR = 2.0;
-const int MEMORY_LIMIT = 1 << 25;
+const int MEMORY_LIMIT = 1 << 30;
 const int PING_INTERVAL = 100; // in milliseconds
 
 class KVStorageHandler: virtual public KVStorageIf {

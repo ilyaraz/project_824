@@ -12,6 +12,8 @@
 #include <mutex>
 #include <boost/thread.hpp>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 const int WAIT_CHECK_TIME = 500;
 const int DEAD_TIME = 500;
 
@@ -58,7 +60,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
 
   struct ltstr {
     bool operator()(const Server s1, const Server s2) const {
-      return s1.server.compare(s2.server) == -1 || (s1.server.compare(s2.server) == 0 && s1.port < s2.port);
+      return make_pair(s1.server, s1.port) < make_pair(s2.server, s2.port);
     }
   };
 
@@ -77,7 +79,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   }
 
   void receivePing(GetServersReply& _return, const Server& s) {
-    std::cout << "received ping from " << s.server << ":" << s.port << std::endl;
+    //std::cout << "received ping from " << s.server << ":" << s.port << std::endl;
     pingsMutex.lock();
     if (pings.find(s) != pings.end()) {
         pings[s] = boost::posix_time::microsec_clock::local_time();
@@ -115,7 +117,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       GetServersReply reply;
       getView(reply);
       for (std::map<int, Server>::iterator it = reply.view.hashToServer.begin(); it != reply.view.hashToServer.end(); it++) {
-          std::cout << it->first << " " << it->second.server << " " << it->second.port << std::endl;
+          std::cout << it->first << " " << it->second.server << " " << it->second.port << " " << pings[it->second] << std::endl;
       }
 
       //Check if any servers are unresponsive
