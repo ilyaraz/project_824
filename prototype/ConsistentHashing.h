@@ -15,9 +15,9 @@ int hash(const std::string &key) {
 
 Server getServer(int hash, const View& v) {
     assert(!v.hashToServer.empty());
-    std::map<int, Server>::iterator it = v.hashToServer.lower_bound(hash);
+    std::map<int, Server>::const_iterator it = v.hashToServer.lower_bound(hash);
     if (it == v.hashToServer.end()) {
-        return *v.hashToServer.begin();
+        return v.hashToServer.begin()->second;
     }
-    return *it;
+    return it->second;
 }

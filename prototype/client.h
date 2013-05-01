@@ -20,8 +20,8 @@ public:
 
     boost::optional<std::string> get(const std::string &key) {
         try {
-            int serverID = getServerID(key);
-            ServerConnection<KVStorageClient> connection(reply_.view.servers[serverID].server, reply_.view.servers[serverID].port);
+            Server server = getServerID(key);
+            ServerConnection<KVStorageClient> connection(server.server, server.port);
             GetArgs args;
             args.key = key;
             args.viewNum = reply_.viewNum;
@@ -44,8 +44,8 @@ public:
 
     void put(const std::string &key, const std::string &value) {
         try {
-            int serverID = getServerID(key);
-            ServerConnection<KVStorageClient> connection(reply_.view.servers[serverID].server, reply_.view.servers[serverID].port);
+            Server server = getServerID(key);
+            ServerConnection<KVStorageClient> connection(server.server, server.port);
             PutArgs args;
             args.key = key;
             args.value = value;
@@ -66,16 +66,8 @@ private:
     GetServersReply reply_;
     Server viewServer;
 
-    int getServerID(const std::string &key) {
-        /*
-        unsigned int result = 0;
-        for (size_t i = 0; i < key.size(); ++i) {
-            result ^= (unsigned int) key[i];
-            result += (result << 1) + (result << 4) + (result << 7) + (result << 8) + (result << 24);
-        }
-        return result % servers.size();
-        */
-        return 0;
+    Server getServerID(const std::string &key) {
+        return getServer(hash(key), reply_.view);
     }
 
     void getView() {
