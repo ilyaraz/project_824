@@ -10,7 +10,7 @@ public:
     explicit EmptyRingException(const std::string &what): std::runtime_error(what) {}
 };
 
-int hash(const std::string &key) {
+int ir_hash(const std::string &key) {
     unsigned int result = 0;
     size_t s = key.size();
     for (size_t i = 0; i < s; ++i) {

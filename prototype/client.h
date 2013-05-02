@@ -109,7 +109,7 @@ private:
     boost::random::mt19937 gen;
 
     Server getServerID(const std::string &key) {
-        std::vector<Server> serversList = getServer(hash(key), reply_.view);
+        std::vector<Server> serversList = getServer(ir_hash(key), reply_.view);
         return serversList[gen() % serversList.size()];
     }
 

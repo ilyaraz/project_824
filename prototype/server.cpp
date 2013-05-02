@@ -15,6 +15,8 @@
 #include <boost/thread.hpp>
 #include <mutex>
 
+#include <iostream>
+
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
 using namespace apache::thrift::transport;
@@ -287,7 +289,7 @@ public:
         }
 		_return.status = Status::OK;
         currentViewMutex.lock();
-        std::vector<Server> servers = getServer(::hash(query.key), currentView.view);
+        std::vector<Server> servers = getServer(ir_hash(query.key), currentView.view);
         currentViewMutex.unlock();
         for (size_t i = 0; i < servers.size(); ++i) {
             if (servers[i] == server) {
@@ -376,7 +378,7 @@ private:
     void cleanHash() {
         hashMutex.lock();
         for (int pos = listHead; pos != -1; pos = hashTable[pos].next) {
-            std::vector<Server> supposedServer = getServer(::hash(hashTable[pos].key), currentView.view);
+            std::vector<Server> supposedServer = getServer(ir_hash(hashTable[pos].key), currentView.view);
             if (std::find(supposedServer.begin(), supposedServer.end(), server) != supposedServer.end()) {
                 adjustVersion(hashTable[pos].version, supposedServer);
                 continue;
@@ -411,7 +413,7 @@ private:
                 return false;
             }
         }
-        std::vector<Server> supposedServer = getServer(::hash(key), _currentView.view);
+        std::vector<Server> supposedServer = getServer(ir_hash(key), _currentView.view);
         return std::find(supposedServer.begin(), supposedServer.end(), server) != supposedServer.end(); 
     }
 
