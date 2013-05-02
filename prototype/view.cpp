@@ -132,7 +132,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
   std::mutex viewMutex;
   std::map<Server, boost::posix_time::ptime, ltstr> pings;
   std::mutex pingsMutex;
-  boost::random::mt19937 gen;
+  boost::mt19937 gen;
 
   GetStatisticsReply aggregateStatistics(const GetStatisticsReply &a, const GetStatisticsReply &b) {
       GetStatisticsReply result;

@@ -106,7 +106,7 @@ public:
 private:
     GetServersReply reply_;
     Server viewServer;
-    boost::random::mt19937 gen;
+    boost::mt19937 gen;
 
     Server getServerID(const std::string &key) {
         std::vector<Server> serversList = getServer(ir_hash(key), reply_.view);
