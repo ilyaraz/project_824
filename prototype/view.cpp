@@ -27,7 +27,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     viewMutex.lock();
     viewNum = 0;
     views.push_back(std::vector<Server>());
-    hashToServer.push_back(std::map<int, Server>());
+    hashToServer.push_back(std::map<int, std::vector<Server> >());
     viewMutex.unlock();
 
     boost::thread t1(boost::bind(&ViewServiceHandler::checkPings, this));
@@ -75,8 +75,8 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     std::vector<Server> newView = std::vector<Server>(views[viewNum]);
     newView.push_back(s);
     views.push_back(newView);
-    std::map<int, Server> newHash(hashToServer[viewNum]);
-    newHash[gen()] = s; 
+    std::map<int, std::vector<Server> > newHash(hashToServer[viewNum]);
+    newHash[gen()] = std::vector<Server>(1, s); 
     hashToServer.push_back(newHash);
     viewNum++;
     std::cout << "Incrementing viewnum to " << viewNum << std::endl;
@@ -96,7 +96,7 @@ class ViewServiceHandler : virtual public ViewServiceIf {
  private:
   int viewNum;
   std::vector<std::vector<Server> > views;
-  std::vector<std::map<int, Server> > hashToServer;
+  std::vector<std::map<int, std::vector<Server> > > hashToServer;
   std::mutex viewMutex;
   std::map<Server, boost::posix_time::ptime, ltstr> pings;
   std::mutex pingsMutex;
@@ -122,8 +122,12 @@ class ViewServiceHandler : virtual public ViewServiceIf {
       viewMutex.lock();
       std::cout << "Current viewnumber is " << viewNum << std::endl;
       viewMutex.unlock();
-      for (std::map<int, Server>::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); it++) {
-          std::cout << it->first << " " << it->second.server << " " << it->second.port << " " << pings[it->second] << std::endl;
+      for (std::map<int, std::vector<Server> >::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); it++) {
+          std::cout << it->first << ": ";
+          for (std::vector<Server>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++) {
+              std::cout << it2->server << ":" << it2->port << " (last seen " << pings[*it2] << ") ";
+          }
+          std::cout << std::endl;
       }
 
       //Check if any servers are unresponsive
@@ -144,15 +148,17 @@ class ViewServiceHandler : virtual public ViewServiceIf {
         viewMutex.lock();
         std::vector<Server> newView = std::vector<Server>();
         std::vector<Server> oldView = views[viewNum];
-        std::map<int, Server> newHash;
+        std::map<int, std::vector<Server> > newHash;
         for (size_t i = 0; i < oldView.size(); ++i) {
           if (std::find(toRemove.begin(), toRemove.end(), oldView[i]) == toRemove.end()) {
             newView.push_back(oldView[i]);
           }
         }
-        for (std::map<int, Server>::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); ++it) {
-          if (std::find(toRemove.begin(), toRemove.end(), it->second) == toRemove.end()) {
-              newHash[it->first] = it->second;
+        for (std::map<int, std::vector<Server> >::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); ++it) {
+          for (std::vector<Server>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++) {
+              if (std::find(toRemove.begin(), toRemove.end(), *it2) == toRemove.end()) {
+                  newHash[it->first].push_back(*it2);
+              }
           }
         }
         hashToServer.push_back(newHash);
