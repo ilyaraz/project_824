@@ -46,6 +46,7 @@ const double LOAD_FACTOR2 = 0.5;
 const double GROWTH_FACTOR = 2.0;
 const int MEMORY_LIMIT = 1 << 30;
 const int PING_INTERVAL = 100; // in milliseconds
+const int ANTI_ENTROPY_WAIT = 1000;
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
@@ -64,6 +65,169 @@ public:
               vsConnection.getClient()->addReplica(server, master);
           }
           boost::thread t1(boost::bind(&KVStorageHandler::pingViewService, this));
+          boost::thread t2(boost::bind(&KVStorageHandler::antiEntropyHandler, this));
+        }
+
+        void printVersion(std::vector<std::pair<Server, long long> > &v) {
+            std::cout << "(";
+            for (size_t i = 0; i < v.size(); ++i) {
+                if (i) std::cout << ", ";
+                std::cout << v[i].first.server << ":" << v[i].first.port << "->" << v[i].second;
+            }
+            std::cout << ")";
+        }
+
+        bool atMost(std::vector<std::pair<Server, long long> > &v1, std::vector<std::pair<Server, long long> > &v2) {
+            for (size_t i = 0; i < v1.size(); ++i) {
+                for (size_t j = 0; j < v2.size(); ++j) {
+                    if (v1[i].first == v2[j].first && v1[i].second > v2[j].second) {
+                        return false;
+                    }
+                }
+            }
+            for (size_t i = 0; i < v1.size(); ++i) {
+                bool ok = false;
+                for (size_t j = 0; j < v2.size(); ++j) {
+                    if (v1[i].first == v2[j].first) {
+                        ok = true;
+                        break;
+                    }
+                }
+                if (!ok) return false;
+            }
+            return true;
+        }
+
+        void updateVersion(std::vector<std::pair<Server, long long> > &v1, const std::pair<Server, long long> &v2) {
+            for (size_t i = 0; i < v1.size(); ++i) {
+                if (v2.first == v1[i].first) {
+                    v1[i].second = std::max(v1[i].second, v2.second);
+                }
+            }
+        }
+        
+        std::vector<std::pair<Server, long long> > maximumVersion(std::vector<std::pair<Server, long long> > &v1, std::vector<std::pair<Server, long long> > &v2) {
+            std::vector<std::pair<Server, long long> > result;
+            for (size_t i = 0; i < v1.size(); ++i) {
+                updateVersion(result, v1[i]);
+            }
+            for (size_t i = 0; i < v2.size(); ++i) {
+                updateVersion(result, v2[i]);
+            }
+            return result;
+        }
+
+        void propagate(const Entry &entry, std::vector<std::string> &invalidatedEntries) {
+            normalizeTable();
+            int pos = getPosition(entry.key);
+            if (hashTable[pos].state == ALIVE) {
+                std::vector<std::pair<Server, long long> > v(entry.version.size());
+                for (size_t i = 0; i < v.size(); ++i) {
+                    v[i] = std::make_pair(entry.version[i].server, entry.version[i].version);
+                }
+                printVersion(v);
+                std::cout << " vs ";
+                printVersion(hashTable[pos].version);
+                std::cout << std::endl;
+
+                if (atMost(v, hashTable[pos].version)) {
+                    std::cout << "skipping" << std::endl;
+                    return;
+                }
+                if (atMost(hashTable[pos].version, v)) {
+                    std::cout << "replacing" << std::endl;
+                    totalKeyValueSize -= hashTable[pos].value.size();
+                    hashTable[pos].value = entry.value;
+                    totalKeyValueSize += hashTable[pos].value.size();
+                    accessEntry(pos);
+                    hashTable[pos].version.swap(v);
+                    return;
+                }
+                if (entry.value == hashTable[pos].value) {
+                    std::cout << "conflict resolved" << std::endl;
+                    hashTable[pos].version = maximumVersion(v, hashTable[pos].version);
+                    return;
+                }
+                std::cout << "conflict: invalidating entries" << std::endl;
+                invalidatedEntries.push_back(hashTable[pos].key);
+                removeEntry(pos);
+            }
+            else {
+                addEntry(pos, entry.key, entry.value, entry.version);
+            }
+        }
+
+        void antiEntropy(AntiEntropyReply& _return, const AntiEntropyArgs& query) {
+            currentViewMutex.lock();
+            bool ok = currentView.viewNum == query.viewNum;
+            currentViewMutex.unlock();
+            if (!ok) {
+                _return.status = Status::WRONG_SERVER;
+                return;
+            }
+            hashMutex.lock();
+            for (auto it = query.entries.begin(); it != query.entries.end(); ++it) {
+                propagate(*it, _return.invalidatedEntries);
+            }
+            hashMutex.unlock();
+            _return.status = Status::OK;
+        }
+
+        void antiEntropyHandler() {
+            for (;;) {
+                boost::this_thread::sleep(boost::posix_time::milliseconds(ANTI_ENTROPY_WAIT));
+                hashMutex.lock();
+                for (auto it = diffs.begin(); it != diffs.end(); ++it) {
+                    std::cout << it->first.server << ":" << it->first.port << " -> " << it->second.size() << std::endl;
+                }
+                std::cout << "----------" << std::endl;
+                for (auto it = diffs.begin(); it != diffs.end(); ++it) {
+                    if (!it->second.empty()) {
+                        currentViewMutex.lock();
+                        AntiEntropyArgs args;
+                        args.viewNum = currentView.viewNum; 
+                        currentViewMutex.unlock();
+                        for (auto it1 = it->second.begin(); it1 != it->second.end(); ++it1) {
+                            int pos = getPosition(*it1);
+                            if (hashTable[pos].state != ALIVE) {
+                                continue;
+                            }
+                            Entry entry;
+                            entry.key = hashTable[pos].key;
+                            entry.value = hashTable[pos].value;
+                            entry.version.resize(hashTable[pos].version.size());
+                            for (size_t i = 0; i < hashTable[pos].version.size(); ++i) {
+                                entry.version[i].server = hashTable[pos].version[i].first;
+                                entry.version[i].version = hashTable[pos].version[i].second;
+                            }
+                            args.entries.push_back(entry);
+                        }
+                        AntiEntropyReply reply;
+                        hashMutex.unlock();
+                        try {
+                            ServerConnection<KVStorageClient> connection(it->first.server, it->first.port);
+                            connection.getClient()->antiEntropy(reply, args);
+                        }
+                        catch (...) {
+                            reply.status = Status::WRONG_SERVER;
+                        }
+                        hashMutex.lock();
+                        if (reply.status == Status::OK) {
+                            diffs.erase(it);
+                            std::cout << "invalidating " << reply.invalidatedEntries.size() << " entries" << std::endl;
+                            for (auto it = reply.invalidatedEntries.begin(); it != reply.invalidatedEntries.end(); ++it) {
+                                int pos = getPosition(*it);
+                                if (hashTable[pos].state != ALIVE) {
+                                    continue;
+                                }
+                                removeEntry(pos);
+                            }
+                        }
+                        break;
+                    }
+                }
+                hashMutex.unlock();
+            }
         }
 
         void pingViewService() {
@@ -110,7 +274,9 @@ public:
                     break;
                 }
             }
-            assert(ok);
+            if (!ok) {
+                hashTable[pos].version.push_back(std::make_pair(server, 1));
+            }
             totalKeyValueSize += hashTable[pos].value.size();
             ++statistics.numUpdates;
             accessEntry(pos);
@@ -120,8 +286,17 @@ public:
             addEntry(pos, query.key, query.value);
         }
 		_return.status = Status::OK;
+        currentViewMutex.lock();
+        std::vector<Server> servers = getServer(::hash(query.key), currentView.view);
+        currentViewMutex.unlock();
+        for (size_t i = 0; i < servers.size(); ++i) {
+            if (servers[i] == server) {
+                continue;
+            }
+            diffs[servers[i]].insert(query.key);
+        }
         hashMutex.unlock();
-        debug();
+        //debug();
 	}
 
 	void get(GetReply& _return, const GetArgs& query) {
@@ -143,7 +318,7 @@ public:
             ++statistics.numFailedGets;
         }
         hashMutex.unlock();
-        debug();
+        //debug();
 	}
 
     void getStatistics(GetStatisticsReply& _return) {
@@ -167,6 +342,15 @@ private:
     int vsPort;
     std::mutex hashMutex;
 
+    struct cmpServers {
+        bool operator()(const Server &a, const Server &b) const {
+            return std::make_pair(a.server, a.port) < std::make_pair(b.server, b.port);
+        }
+    };
+
+    std::map<Server, std::set<std::string>, cmpServers> diffs;
+
+
     void adjustVersion(std::vector<std::pair<Server, long long> > &version, const std::vector<Server> &servers) {
         std::vector<std::pair<Server, long long> > newV;
         for (std::vector<std::pair<Server, long long> >::iterator it = version.begin(); it != version.end(); ++it) {
@@ -175,6 +359,18 @@ private:
             }
         }
         version.swap(newV);
+        for (size_t i = 0; i < servers.size(); ++i) {
+            if (!diffs.count(servers[i]) && servers[i] != server) {
+                for (int pos = listHead; pos != -1; pos = hashTable[pos].next) {
+                    diffs[servers[i]].insert(hashTable[pos].key);
+                }
+            }
+        }
+        for (auto it = diffs.begin(); it != diffs.end(); ++it) {
+            if (std::find(servers.begin(), servers.end(), it->first) == servers.end()) {
+                diffs.erase(it);
+            }
+        }
     }
 
     void cleanHash() {
@@ -366,6 +562,17 @@ private:
         addToFront(pos);
 
         ++numEntries;
+    }
+
+    void addEntry(int pos, const std::string &key, const std::string &value, const std::vector<VersionEntry> &version) {
+        addEntry(pos, key, value);
+
+        std::vector<std::pair<Server, long long> > version_(version.size());
+        for (size_t i = 0; i < version.size(); ++i) {
+            version_[i] = std::make_pair(version[i].server, version[i].version);
+        }
+
+        hashTable[pos].version.swap(version_);
     }
 
     int getUsedMemory() {

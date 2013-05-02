@@ -51,10 +51,32 @@ struct GetStatisticsReply {
     8: i64 numPurges
 }
 
+struct VersionEntry {
+    1: Server server
+    2: i64 version
+}
+
+struct Entry {
+    1: string key,
+    2: string value,
+    3: list<VersionEntry> version
+}
+
+struct AntiEntropyArgs {
+    1: list<Entry> entries
+    2: i32 viewNum
+}
+
+struct AntiEntropyReply {
+    1: Status status,
+    2: list<string> invalidatedEntries
+}
+
 service KVStorage {
 	PutReply put(1: PutArgs query),
 	GetReply get(1: GetArgs query),
-    GetStatisticsReply getStatistics()
+    GetStatisticsReply getStatistics(),
+    AntiEntropyReply antiEntropy(1: AntiEntropyArgs data)
 }
 
 service ViewService {

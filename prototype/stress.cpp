@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     int numFailedGets = 0;
     for (;;) {
         std::string key;
-        for (int i = 0; i < 7; ++i) {
+        for (int i = 0; i < 3; ++i) {
             key += '0' + (rand() % 10);
         }
         if (rand() % 2) {
