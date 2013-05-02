@@ -12,6 +12,9 @@
 #include <string>
 #include <iostream>
 
+#include <unistd.h>
+#include <boost/random/mersenne_twister.hpp>
+
 class ViewServiceException: public std::runtime_error {
 public:
     explicit ViewServiceException(const std::string &what): std::runtime_error(what) {}
@@ -31,6 +34,7 @@ class CacheClient {
 public:
     CacheClient(const Server &viewServer): viewServer(viewServer) {
         getView();
+        gen.seed(getpid());
     }
 
     boost::optional<std::string> get(const std::string &key) {
@@ -102,9 +106,11 @@ public:
 private:
     GetServersReply reply_;
     Server viewServer;
+    boost::random::mt19937 gen;
 
     Server getServerID(const std::string &key) {
-        return getServer(hash(key), reply_.view)[0];
+        std::vector<Server> serversList = getServer(hash(key), reply_.view);
+        return serversList[gen() % serversList.size()];
     }
 
     void getView() {

@@ -47,11 +47,20 @@ const int PING_INTERVAL = 100; // in milliseconds
 
 class KVStorageHandler: virtual public KVStorageIf {
 public:
-	KVStorageHandler(const std::string &address, const int &port, const std::string &vsAddress, const int &vsPort): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0), vsAddress(vsAddress), vsPort(vsPort) {
+	KVStorageHandler(const std::string &address, const int &port, const std::string &vsAddress, const int &vsPort,
+            const std::string &masterAddress, const int &masterPort): hashTable(10), listHead(-1), listTail(-1), totalKeyValueSize(0), numEntries(0), numDeadEntries(0), vsAddress(vsAddress), vsPort(vsPort) {
           server.server = address;
           server.port = port;
           ServerConnection<ViewServiceClient> vsConnection(vsAddress, vsPort);
-          vsConnection.getClient()->addServer(server);
+          if (masterAddress == "") {
+              vsConnection.getClient()->addServer(server);
+          }
+          else {
+              Server master;
+              master.server = masterAddress;
+              master.port = masterPort;
+              vsConnection.getClient()->addReplica(server, master);
+          }
           boost::thread t1(boost::bind(&KVStorageHandler::pingViewService, this));
         }
 
@@ -337,7 +346,14 @@ int main(int argc, char **argv) {
         std::string vsAddress = argv[3];
         int vsPort = atoi(argv[4]);
 
-	shared_ptr<KVStorageHandler> handler(new KVStorageHandler(address, port, vsAddress, vsPort));
+        std::string masterAddress = "";
+        int masterPort = -1;
+        if (argc > 5) {
+            masterAddress = argv[5];
+            masterPort = atoi(argv[6]); 
+        }
+
+	shared_ptr<KVStorageHandler> handler(new KVStorageHandler(address, port, vsAddress, vsPort, masterAddress, masterPort));
 	shared_ptr<TProcessor> processor(new KVStorageProcessor(handler));
 	//shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
 	//shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());

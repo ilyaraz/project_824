@@ -83,6 +83,38 @@ class ViewServiceHandler : virtual public ViewServiceIf {
     viewMutex.unlock();
   }
 
+  void addReplica(const Server& s, const Server &master) {
+    viewMutex.lock();
+    bool ok = false;
+    for (size_t i = 0; i < views[viewNum].size(); i++) {
+        if (views[viewNum][i] == master) {
+            ok = true;
+            break;
+        }
+    }
+    if (!ok) {
+        viewMutex.unlock();
+        return;
+    }
+    std::vector<Server> newView = std::vector<Server>(views[viewNum]);
+    newView.push_back(s);
+    views.push_back(newView);
+    std::map<int, std::vector<Server> > newHash(hashToServer[viewNum]);
+    for (std::map<int, std::vector<Server> >::iterator it = hashToServer[viewNum].begin(); it != hashToServer[viewNum].end(); it++) {
+        if (std::find(it->second.begin(), it->second.end(), master) != it->second.end()) {
+            newHash[it->first].push_back(s);
+            break;
+        }
+    }
+    hashToServer.push_back(newHash);
+    viewNum++;
+    std::cout << "Incrementing viewnum to " << viewNum << std::endl;
+    pingsMutex.lock();
+    pings[s] = boost::posix_time::microsec_clock::local_time();
+    pingsMutex.unlock();
+    viewMutex.unlock();
+  }
+
   void receivePing(GetServersReply& _return, const Server& s) {
     //std::cout << "received ping from " << s.server << ":" << s.port << std::endl;
     pingsMutex.lock();
