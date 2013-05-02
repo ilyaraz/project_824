@@ -20,11 +20,11 @@ int hash(const std::string &key) {
     return result;
 }
 
-Server getServer(int hash, const View& v) {
+std::vector<Server> getServer(int hash, const View& v) {
     if (v.hashToServer.empty()) {
         throw EmptyRingException("empty ring");
     }
-    std::map<int, Server>::const_iterator it = v.hashToServer.lower_bound(hash);
+    std::map<int, std::vector<Server> >::const_iterator it = v.hashToServer.lower_bound(hash);
     if (it == v.hashToServer.end()) {
         return v.hashToServer.begin()->second;
     }

@@ -104,7 +104,7 @@ private:
     Server viewServer;
 
     Server getServerID(const std::string &key) {
-        return getServer(hash(key), reply_.view);
+        return getServer(hash(key), reply_.view)[0];
     }
 
     void getView() {

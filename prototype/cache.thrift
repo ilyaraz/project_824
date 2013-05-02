@@ -31,7 +31,7 @@ struct Server {
 }
 
 struct View {
-  1: map<i32, Server> hashToServer
+  1: map<i32, list<Server> > hashToServer
 }
 
 struct GetServersReply {

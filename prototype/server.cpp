@@ -150,8 +150,8 @@ private:
     void cleanHash() {
         hashMutex.lock();
         for (int pos = listHead; pos != -1; pos = hashTable[pos].next) {
-            Server supposedServer = getServer(::hash(hashTable[pos].key), currentView.view);
-            if (supposedServer.server == server.server && supposedServer.port == server.port) {
+            std::vector<Server> supposedServer = getServer(::hash(hashTable[pos].key), currentView.view);
+            if (std::find(supposedServer.begin(), supposedServer.end(), server) != supposedServer.end()) {
                 continue;
             }
             removeEntry(pos);
@@ -184,8 +184,8 @@ private:
                 return false;
             }
         }
-        Server supposedServer = getServer(::hash(key), _currentView.view);
-        return supposedServer.server == server.server && supposedServer.port == server.port;
+        std::vector<Server> supposedServer = getServer(::hash(key), _currentView.view);
+        return std::find(supposedServer.begin(), supposedServer.end(), server) != supposedServer.end(); 
     }
 
     void debug() {
