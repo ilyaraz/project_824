@@ -35,6 +35,8 @@ struct Record {
     int prev;
     int next;
 
+    std::vector<std::pair<Server, long long> > version;
+
     Record(): state(EMPTY), prev(-1), next(-1) {
     }
 };
@@ -100,6 +102,15 @@ public:
         if (hashTable[pos].state == ALIVE) {
             totalKeyValueSize -= hashTable[pos].value.size();
             hashTable[pos].value = query.value;
+            bool ok = false;
+            for (std::vector<std::pair<Server, long long> >::iterator it = hashTable[pos].version.begin(); it != hashTable[pos].version.end(); ++it) {
+                if (it->first == server) {
+                    ++it->second;
+                    ok = true;
+                    break;
+                }
+            }
+            assert(ok);
             totalKeyValueSize += hashTable[pos].value.size();
             ++statistics.numUpdates;
             accessEntry(pos);
@@ -110,7 +121,7 @@ public:
         }
 		_return.status = Status::OK;
         hashMutex.unlock();
-        //debug();
+        debug();
 	}
 
 	void get(GetReply& _return, const GetArgs& query) {
@@ -132,7 +143,7 @@ public:
             ++statistics.numFailedGets;
         }
         hashMutex.unlock();
-        //debug();
+        debug();
 	}
 
     void getStatistics(GetStatisticsReply& _return) {
@@ -156,11 +167,22 @@ private:
     int vsPort;
     std::mutex hashMutex;
 
+    void adjustVersion(std::vector<std::pair<Server, long long> > &version, const std::vector<Server> &servers) {
+        std::vector<std::pair<Server, long long> > newV;
+        for (std::vector<std::pair<Server, long long> >::iterator it = version.begin(); it != version.end(); ++it) {
+            if (std::find(servers.begin(), servers.end(), it->first) != servers.end()) {
+                newV.push_back(*it);
+            }
+        }
+        version.swap(newV);
+    }
+
     void cleanHash() {
         hashMutex.lock();
         for (int pos = listHead; pos != -1; pos = hashTable[pos].next) {
             std::vector<Server> supposedServer = getServer(::hash(hashTable[pos].key), currentView.view);
             if (std::find(supposedServer.begin(), supposedServer.end(), server) != supposedServer.end()) {
+                adjustVersion(hashTable[pos].version, supposedServer);
                 continue;
             }
             removeEntry(pos);
@@ -200,7 +222,11 @@ private:
     void debug() {
         std::cout << getUsedMemory() << std::endl;
         for (int i = listHead; i != -1; i = hashTable[i].next) {
-            std::cout << "(" << hashTable[i].key << ", " << hashTable[i].value << ") ";
+            std::cout << "(" << hashTable[i].key << ", " << hashTable[i].value;
+            for (size_t j = 0; j < hashTable[i].version.size(); ++j) {
+                std::cout << ", " << hashTable[i].version[j].first.server << ":" << hashTable[i].version[j].first.port << "->" << hashTable[i].version[j].second;
+            }
+            std::cout << ") ";
         }
         std::cout << std::endl;
     }
@@ -239,6 +265,7 @@ private:
             newTable[pos].state = ALIVE;
             newTable[pos].key.swap(hashTable[i].key);
             newTable[pos].value.swap(hashTable[i].value);
+            newTable[pos].version.swap(hashTable[i].version);
             newTable[pos].prev = newListTail;
             if (newListTail != -1) {
                 newTable[newListTail].next = pos;
@@ -261,6 +288,8 @@ private:
         Record emptyRecord;
         std::swap(hashTable[pos], emptyRecord);
         hashTable[pos].state = DEAD;
+        std::vector<std::pair<Server, long long> > version;
+        hashTable[pos].version.swap(version);
         numEntries--;
         numDeadEntries++;
     }
@@ -329,6 +358,10 @@ private:
         totalKeyValueSize += key.size() + value.size();
         hashTable[pos].key = key;
         hashTable[pos].value = value;
+
+        std::vector<std::pair<Server, long long> > version(1, std::make_pair(server, 1));
+
+        hashTable[pos].version.swap(version);
 
         addToFront(pos);
 
