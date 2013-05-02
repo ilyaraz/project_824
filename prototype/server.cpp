@@ -125,17 +125,17 @@ public:
                 for (size_t i = 0; i < v.size(); ++i) {
                     v[i] = std::make_pair(entry.version[i].server, entry.version[i].version);
                 }
-                printVersion(v);
-                std::cout << " vs ";
-                printVersion(hashTable[pos].version);
-                std::cout << std::endl;
+                //printVersion(v);
+                //std::cout << " vs ";
+                //printVersion(hashTable[pos].version);
+                //std::cout << std::endl;
 
                 if (atMost(v, hashTable[pos].version)) {
-                    std::cout << "skipping" << std::endl;
+                    //std::cout << "skipping" << std::endl;
                     return;
                 }
                 if (atMost(hashTable[pos].version, v)) {
-                    std::cout << "replacing" << std::endl;
+                    //std::cout << "replacing" << std::endl;
                     totalKeyValueSize -= hashTable[pos].value.size();
                     hashTable[pos].value = entry.value;
                     totalKeyValueSize += hashTable[pos].value.size();
@@ -144,11 +144,11 @@ public:
                     return;
                 }
                 if (entry.value == hashTable[pos].value) {
-                    std::cout << "conflict resolved" << std::endl;
+                    //std::cout << "conflict resolved" << std::endl;
                     hashTable[pos].version = maximumVersion(v, hashTable[pos].version);
                     return;
                 }
-                std::cout << "conflict: invalidating entries" << std::endl;
+                //std::cout << "conflict: invalidating entries" << std::endl;
                 invalidatedEntries.push_back(hashTable[pos].key);
                 removeEntry(pos);
             }

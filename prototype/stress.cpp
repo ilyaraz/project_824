@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 3; ++i) {
             key += '0' + (rand() % 10);
         }
-        if (rand() % 2) {
+        if (rand() % 50 == 0) {
             std::string value;
             for (int i = 0; i < 1024; i++) {
                 value += '0' + (rand() % 10);
