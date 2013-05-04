@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 const int WAIT_CHECK_TIME = 500;
-const int DEAD_TIME = 500;
+const int DEAD_TIME = 1000;
 
 class ViewServiceHandler : virtual public ViewServiceIf {
  public:
