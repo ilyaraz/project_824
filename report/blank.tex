@@ -26,7 +26,82 @@
     \author{Gautam Kamath \and Ilya Razenshteyn}
     \maketitle
 
-    \section{Introduction}
+    \section{Problem}
+     Memcached~\cite{memcached} is an extremely simple and useful caching system for web applications.
+     It is used by many high-traffic sites, including Youtube, Reddit, Zynga, Facebook, Twitter, and Wikipedia.
+     It is implemented via a distributed hash table stored in the RAM of a group of servers.
+     There is no communication between servers, and clients decide which servers need to be queried during a request.
+
+     This system's simplicity comes at a price.
+     If a server fails, all further queries to this server will be cache misses.
+     Assuming that keys are accessed multiple times, this will cause unnecessary load on the database.
+     Another issue arises if servers are assigned disjoint sets of keys.
+     If there are many queries involving the same key, performance will suffer, since one server will have to handle all these queries.
+     \section{Solution}
+     Our solution to these problems consisted of two well-known techniques in distributed systems: consistent hashing and eventual consistency.
+     \subsection{Consistent Hashing}
+     In our system, we distribute data among several servers.
+     The obvious way to ensure a balanced allocation is to apply a hash function $h$ to the key $k_i$.
+     We then assign the key to server $j = h(k_i) \bmod s$, where $s$ is the number of servers.
+     The issue arises when a server joins or leaves this configuration.
+     In this case, almost every key will be hashed to a new location and will have to be fetched again from the database.
+     Consistent hashing~\cite{chashing} provides an elegant solution to this problem.
+     In a consistent hashing scheme, servers and keys are both hashed to points on the circumference of a circle.
+     A key is assigned to a server if the server is the first server reached when traversing the circle clockwise from the key's hashed location.
+     As a consequence, we expect only a $\frac{1}{s}$ fraction of the keys will be relocated upon a server entering or leaving the configuration.
+     This allows us to deal with server failures without introducing excessive load on the database.
+     \subsection{Replication with Eventual Consistency}
+     Consider a situation where all clients query for the same key.
+     The throughput of the system is limited by the throughput of a single server.
+     We deal with this by creating replication groups for each server site on the circle.
+     A client chooses a random server in the replication group to handle its query.
+
+     However, this introduces a new issue.
+     Inevitably, different servers in the same replication group will have contradictory mappings.
+     We handle this using eventual consistency~\cite{bayou}.
+     In this model, servers will deal with disagreements using a procedure called anti-entropy.
+     A server stores a set of diffs since the last anti-entropy session and compares these diffs with its replicas.
+     If we find a set of contradictory diffs, we adopt the diff with the latest time stamp.
+     While there will be a brief period of time where servers have inconsistent views of the state, these will eventually be resolved.
+     This sort of consistency guarantee is most useful in systems where reads are much more frequent than writes.
+     For instance, consider a popular blog - updates to the blog are much less common than pageviews.
+     Eventual consistency in this scenario would be very useful, since we are not too concerned if a viewer sees a new post slightly later than another viewer.
+
+
+     \section{Implementation}
+     Our implementation can be thought of as three components: client, server, and viewservice.
+     We used Apache Thrift as a framework to handle RPCs between these components.
+     In total, our implementation is roughly 1500 lines.
+
+     We built three clients - a C++ client for maximum performance, and Python and Java clients as more realistic performance metrics.
+     Clients support a simple put/get interface.
+     Each client communicates with the viewservice to get a view and uses consistent hashing to determine which server to query.
+     If we query the wrong server, we refresh our view by querying the viewservice again.
+
+     Our server maintains a mapping of keys to values.
+     Every 100ms, a server pings the viewservice to indicate it is still functional.
+     Every 1000ms, a server undergoes anti-entropy with a replica.
+     In our current implementation, we expect reasonable performance when the number of replicas is relatively small.
+     Upon receiving a request from a client, the server first confirms that it is responsible for the relevant key.
+     If not, the server's reply indicates that it was the wrong server.
+     Otherwise, the server updates its local hashtable and replies with a confirmation.
+
+     Our viewservice keeps track of which servers are currently alive, and their locations in the consistent hashing ring.
+     We update the view if a new server joins the configuration or if a server dies (i.e., it stops sending pings to the viewservice).
+
+     \section{Challenges}
+     We had issues with the hash table.
+
+     There were also some unexpected issues involving Linux networking.
+     While the C++ client was able to perform queries in rapid succession, the Python and Java clients were not.
+     The Python client would hang after about 9 seconds of operation, while the Java client started raising exceptions related to networking issues.
+     We discovered the issue was due to the TCP TIME\_WAIT state.
+     After a socket is closed, it enters this state in order to ensure reliable delivery of packets which it does not know about yet.
+     By default on Unix systems, this period is 60 seconds.
+     As a result, if we open and close connections very quickly, we can reach a point where no sockets are available, due to the majority being in the TIME\_WAIT state.
+     We can force these sockets to be recycled quickly by changing the system flag \verb=/proc/sys/net/ipv4/tcp_tw_recycle=.
+     Since we only attempt to close after the data is sent over the connection, this should not affect correctness.
+     It is unclear why this issue arises with the Java and Python clients, but not the C++ client.
 
 
 \bibliographystyle{abbrv}
