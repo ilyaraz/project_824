@@ -7,6 +7,10 @@
 
 #include <unistd.h>
 
+const int KEY_LENGTH = 7;
+const int PUT_PROPORTION = 50;
+const int VALUE_SIZE = 1024;
+
 int main(int argc, char **argv) {
 
     srand(getpid());
@@ -25,12 +29,12 @@ int main(int argc, char **argv) {
     int numFailedGets = 0;
     for (;;) {
         std::string key;
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < KEY_LENGTH; ++i) {
             key += '0' + (rand() % 10);
         }
-        if (rand() % 50 == 0) {
+        if (rand() % PUT_PROPORTION == 0) {
             std::string value;
-            for (int i = 0; i < 1024; i++) {
+            for (int i = 0; i < VALUE_SIZE; i++) {
                 value += '0' + (rand() % 10);
             }
             try {
