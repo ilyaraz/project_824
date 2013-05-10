@@ -1,4 +1,4 @@
-\documentclass[letterpaper,11pt]{article}
+\documentclass[letterpaper,8pt]{article}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -26,6 +26,7 @@
 \begin{document}
     \title{A Robust Version of Memcached}
     \author{Gautam Kamath \and Ilya Razenshteyn}
+    \date{\vspace{-5em}}
     \maketitle
 
     \section{Problem}
@@ -103,19 +104,13 @@
      In this case, throughput increased to 70000 operations per second.
 
      \section{Challenges}
-     We had issues with the hash table.
+     We spent some time trying to build an efficient hash table.
+     We used linear probing for collision resolution, and the FNV hash function, which is known to be efficient in practice.
 
      There were also some unexpected issues involving Linux networking.
-     While the C++ client was able to perform queries in rapid succession, the Python and Java clients were not.
-     The Python client would hang after about 9 seconds of operation, while the Java client started raising exceptions related to networking issues.
-     We discovered the issue was due to the TCP TIME\_WAIT state.
-     After a socket is closed, it enters this state in order to ensure reliable delivery of packets which it does not know about yet.
-     By default on Unix systems, this period is 60 seconds.
-     As a result, if we open and close connections very quickly, we can reach a point where no sockets are available, due to the majority being in the TIME\_WAIT state.
-     We can force these sockets to be recycled quickly by changing the system flag \verb=/proc/sys/net/ipv4/tcp_tw_recycle=.
-     Since we only attempt to close after the data is sent over the connection, this should not affect correctness.
-     It is unclear why this issue arises with the Java and Python clients, but not the C++ client.
-
+     In particular, with the Python and Java clients, sockets fell into the TCP TIME\_WAIT state.
+     In this state, the socket is unusable for 60 seconds, so we quickly use up all possible sockets.
+     This issue was fixed by changing a system flag, which allowed fast recycling of sockets.
 
 \bibliographystyle{abbrv}
 \bibliography{biblio}
