@@ -91,6 +91,17 @@
      Our viewservice keeps track of which servers are currently alive, and their locations in the consistent hashing ring.
      We update the view if a new server joins the configuration or if a server dies (i.e., it stops sending pings to the viewservice).
 
+     \section{Performance}
+     We measured a few performance benchmarks to investigate the impact of these techniques.
+     All benchmarks were performed with clients running a stress test, i.e., performing puts and gets on random data as fast as possible.
+
+     Our first test involved one machine running a viewservice and five servers, and two machines each running twenty clients.
+     Our system could process roughly 42000 operations per second.
+     We then started another machine running five servers, and throughput increased to between 55000 operations per second.
+
+     Our next test was similar, but we had the second set of five servers be replicas of the first set.
+     In this case, throughput was strongly bimodal, with peaks at 49000 and 69000 operations per second.
+
      \section{Challenges}
      We had issues with the hash table.
 
