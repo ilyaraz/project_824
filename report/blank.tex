@@ -96,11 +96,11 @@
      All benchmarks were performed with clients running a stress test, i.e., performing puts and gets on random data as fast as possible.
 
      Our first test involved one machine running a viewservice and five servers, and two machines each running twenty clients.
-     Our system could process roughly 42000 operations per second.
-     We then started another machine running five servers, and throughput increased to between 55000 operations per second.
+     Our system could process roughly 40000 operations per second.
+     We then started another machine running five servers, and throughput increased to 60000 operations per second.
 
      Our next test was similar, but we had the second set of five servers be replicas of the first set.
-     In this case, throughput was strongly bimodal, with peaks at 49000 and 69000 operations per second.
+     In this case, throughput increased to 70000 operations per second.
 
      \section{Challenges}
      We had issues with the hash table.
