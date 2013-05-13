@@ -11,7 +11,7 @@ public class StressTest {
         int counter = 0;
         for (;;) {
             int userID = random.nextInt(50000) + 1;
-            URL url = new URL("http://127.0.0.1:8000/"+userID);
+            URL url = new URL("http://palila.csail.mit.edu:8000/"+userID);
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.connect();
             long size = new Scanner(connection.getInputStream()).useDelimiter("\\A").next().length();
