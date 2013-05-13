@@ -6,8 +6,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Scanner;
 
 public class Server implements HttpHandler {
@@ -57,11 +59,35 @@ public class Server implements HttpHandler {
     }
     
     private List<BlogPost> getPosts(int userID) {
+        /*
         List<BlogPost> result = new ArrayList<BlogPost>();
         for (int i = 0; i < 10; i++) {
             result.add(new BlogPost("Header " + i, "Body " + i));
         }
         return result;
+        */
+        try {   
+            Connection conn = null;
+            Properties connectionProps = new Properties();
+            connectionProps.put("user", "ilyaraz");
+            connectionProps.put("password", "dbpass");
+    
+    
+            conn = DriverManager.getConnection("jdbc:postgresql://towhee.csail.mit.edu:5432/ilyadb",
+                    connectionProps);
+            Statement s = conn.createStatement();
+            ResultSet r = s.executeQuery("SELECT * FROM posts WHERE uid='" + userID + "'");
+            List<BlogPost> result = new ArrayList<BlogPost>();
+            while (r.next()) {
+                result.add(new BlogPost(r.getString(2), r.getString(3)));
+            }
+            conn.close();
+            return result;
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+            return new ArrayList<BlogPost>();
+        }
     }
     
     private String header;

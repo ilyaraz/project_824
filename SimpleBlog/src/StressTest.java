@@ -10,7 +10,7 @@ public class StressTest {
         long t1 = System.currentTimeMillis();
         int counter = 0;
         for (;;) {
-            int userID = random.nextInt();
+            int userID = random.nextInt(50000) + 1;
             URL url = new URL("http://127.0.0.1:8000/"+userID);
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.connect();
