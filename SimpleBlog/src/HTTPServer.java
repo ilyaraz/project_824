@@ -12,15 +12,15 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
 
-public class Server implements HttpHandler {
+public class HTTPServer implements HttpHandler {
     public static void main(String[] args) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), Integer.MAX_VALUE);
-        server.createContext("/", new Server("header.txt", "footer.txt"));
+        server.createContext("/", new HTTPServer("header.txt", "footer.txt"));
         server.setExecutor(null);
         server.start();
     }
     
-    public Server(String headerFile, String footerFile) throws IOException {
+    public HTTPServer(String headerFile, String footerFile) throws IOException {
         header = readFile(headerFile);
         footer = readFile(footerFile);
     }
@@ -46,19 +46,20 @@ public class Server implements HttpHandler {
         os.close();
     }
     
-    private String processUser(int userID) {
+    private String processUser(int userID) throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append("<div class = \"content\">");
         sb.append("<h1>User " + userID + "</h1>");
-        List<BlogPost> posts = getPosts(userID);
+        ArrayList<BlogPost> posts = getPosts(userID);
         for (BlogPost post: posts) {
             sb.append(post);
         }
         sb.append("</div>");
+
         return sb.toString();
     }
     
-    private List<BlogPost> getPosts(int userID) {
+    private ArrayList<BlogPost> getPosts(int userID) {
         /*
         List<BlogPost> result = new ArrayList<BlogPost>();
         for (int i = 0; i < 10; i++) {
@@ -77,7 +78,7 @@ public class Server implements HttpHandler {
                     connectionProps);
             Statement s = conn.createStatement();
             ResultSet r = s.executeQuery("SELECT * FROM posts WHERE uid='" + userID + "'");
-            List<BlogPost> result = new ArrayList<BlogPost>();
+            ArrayList<BlogPost> result = new ArrayList<BlogPost>();
             while (r.next()) {
                 result.add(new BlogPost(r.getString(2), r.getString(3)));
             }
