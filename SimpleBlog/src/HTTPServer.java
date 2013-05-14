@@ -61,27 +61,22 @@ public class HTTPServer implements HttpHandler {
     
     private ArrayList<BlogPost> getPosts(int userID) {
         try {
-            throw new Exception("");
-            /*
             System.out.println("querying cache");
             ArrayList<BlogPost> posts = (ArrayList<BlogPost>)client.get(Integer.toString(userID));
             // here one needs to check, if this data is fresh enough
             return posts;
-            */
         }
         catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             try {
                 System.out.println("querying db");
                 ArrayList<BlogPost> posts = getPostsFromDB(userID);
-                /*
                 try {
                     client.put(Integer.toString(userID), posts);
                 }
                 catch (Exception e1) {
                     //e1.printStackTrace();
                 }
-                */
                 return posts;
             }
             catch (SQLException e1) {

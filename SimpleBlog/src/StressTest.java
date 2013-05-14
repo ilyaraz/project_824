@@ -8,9 +8,9 @@ public class StressTest {
     public static void main(String[] args) throws IOException {
         Random random = new Random();
         long t1 = System.currentTimeMillis();
-        int counter = 0;
+        long counter = 0;
         for (;;) {
-            int userID = random.nextInt(50000) + 1;
+            int userID = random.nextInt(100000) + 1;
             URL url = new URL("http://palila.csail.mit.edu:8000/"+userID);
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.connect();
