@@ -1,4 +1,6 @@
-public class BlogPost {
+import java.io.Serializable;
+
+public class BlogPost implements Serializable {
     private String header;
     private String body;
     
