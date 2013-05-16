@@ -37,4 +37,16 @@
             sporadically.
         \end{itemize}
     \end{frame}
+    \begin{frame}
+      \frametitle{Performance}
+      \begin{itemize}
+        \item Basic setup: 5 servers and view service on one machine, 40 clients across two other machines
+        \item Stress test: Clients perform random put/get operations as fast as possible
+        \item Throughput of 40000 operations/second
+        \item Test 1: 5 additional servers on another machine
+        \item Throughput increases to 60000 operations/second
+        \item Test 2: 5 additional servers on another machine, mirroring original 5
+        \item Throughput increases to 70000 operations/second
+      \end{itemize}
+    \end{frame}
 \end{document}
