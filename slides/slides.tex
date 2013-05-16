@@ -1,7 +1,7 @@
 \documentclass{beamer}
 \title{A Robust Version of Memcached}
 \subtitle{6.824 Final Project}
-\author{Gautam Kamath and Ilya Razenshteyn}
+\author{Gautam Kamath \and Ilya Razenshteyn}
 \institute{MIT}
 \begin{document}
     \begin{frame}
@@ -26,7 +26,9 @@
     \end{frame}
     \begin{frame}
         \frametitle{Consistent Hashing}
-        \includegraphics[scale=0.3]{hashing.pdf}
+        \includegraphics[scale=0.3,page=1]{hashing.pdf}
+        \hspace{1cm}
+        \includegraphics[scale=0.3,page=2]{hashing.pdf}
         \begin{itemize}
             \item Map keys to a circle using hashing, and then find a server that is responsible.
             \item View server tracks servers and is capable of reporting server-to-location mappings.
